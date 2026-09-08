@@ -17,9 +17,12 @@ from app.core.logging import get_logger
 
 log = get_logger("ratelimit")
 
-# path prefix -> ("bucket name", per-minute limit)
+# path prefix -> "bucket name" (login-rate: auth flows are brute-force targets)
 _RULES: list[tuple[str, str]] = [
     ("/api/auth/login", "login"),
+    ("/api/auth/register", "login"),
+    ("/api/auth/forgot-password", "login"),
+    ("/api/auth/reset-password", "login"),
 ]
 _WRITE_PREFIXES = ("/api/jobs", "/api/channels", "/api/scheduler/run", "/api/notifications/test")
 

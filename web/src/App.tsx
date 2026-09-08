@@ -16,8 +16,12 @@ import Setup from "./pages/Setup";
 export default function App() {
   const { user, loading } = useAuth();
 
+  const resettingPassword =
+    window.location.pathname.includes("reset-password") ||
+    new URLSearchParams(window.location.search).has("token");
+
   if (loading) return <div className="p-10 text-slate-400">Loading…</div>;
-  if (!user) return <Login />;
+  if (!user || resettingPassword) return <Login />;
 
   return (
     <Routes>

@@ -16,6 +16,7 @@ from app.core.config import settings
 _ph = PasswordHasher()
 _JWT_ALG = "HS256"
 _ACCESS_TTL = dt.timedelta(hours=12)
+_RESET_TTL = dt.timedelta(minutes=30)
 
 
 # ---------------- Passwords ----------------
@@ -46,6 +47,35 @@ def create_access_token(subject: str, extra: Optional[dict[str, Any]] = None) ->
 
 def decode_token(token: str) -> dict[str, Any]:
     return jwt.decode(token, settings.app_secret_key, algorithms=[_JWT_ALG])
+
+
+# ---------------- Password-reset tokens ----------------
+def password_fingerprint(password_hash: str) -> str:
+    """Short digest of the current hash — ties a reset token to one password."""
+    return hashlib.sha256(password_hash.encode()).hexdigest()[:12]
+
+
+def create_reset_token(user_id: int, password_hash: str) -> str:
+    now = dt.datetime.now(dt.timezone.utc)
+    return jwt.encode(
+        {
+            "sub": str(user_id),
+            "type": "pwd_reset",
+            "pv": password_fingerprint(password_hash),
+            "iat": now,
+            "exp": now + _RESET_TTL,
+        },
+        settings.app_secret_key,
+        algorithm=_JWT_ALG,
+    )
+
+
+def decode_reset_token(token: str) -> tuple[int, str]:
+    """Return (user_id, password_fingerprint); raises jwt errors / ValueError."""
+    payload = jwt.decode(token, settings.app_secret_key, algorithms=[_JWT_ALG])
+    if payload.get("type") != "pwd_reset":
+        raise ValueError("not a reset token")
+    return int(payload["sub"]), str(payload.get("pv", ""))
 
 
 # ---------------- Secret encryption ----------------

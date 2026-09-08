@@ -29,6 +29,7 @@ class Settings(BaseSettings):
 
     admin_email: str = "admin@example.com"
     admin_password: Optional[str] = "admin12345"
+    auth_allow_registration: bool = False  # open sign-up (first user is always allowed)
 
     storage_provider: Literal["local", "s3"] = "local"
     storage_local_root: str = "../storage"
