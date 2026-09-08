@@ -5,7 +5,20 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from app.core.enums import JobStatus, Stage
+from app.core.enums import ApprovalMode, JobStatus, Stage
+
+
+class CreateJobRequest(BaseModel):
+    channel_id: int
+    mode: Optional[ApprovalMode] = None
+    test_run: bool = False
+    topic_id: Optional[int] = None
+    run: bool = True  # start the pipeline immediately
+    run_async: bool = False  # enqueue to RQ instead of running inline
+
+
+class JobActionRequest(BaseModel):
+    reason: str = ""
 
 
 class JobStepOut(BaseModel):

@@ -15,10 +15,11 @@ from app.models.media import VideoProject
 from app.models.user import User
 from app.models.youtube import YoutubeUpload
 from app.providers.registry import get_storage
-from app.schemas.job import JobOut
+from app.schemas.job import CreateJobRequest, JobActionRequest, JobOut
 from app.schemas.youtube import UploadOut
 from app.services.media import MEDIA_STAGES, run_media_pipeline, run_media_stage
 from app.services.publish import PUBLISH_STAGES, run_publish_pipeline, run_publish_stage
+from app.workflows import controller
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -31,8 +32,93 @@ def _job(db: Session, public_id: str) -> Job:
 
 
 @router.get("", response_model=list[JobOut])
-def list_jobs(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return db.execute(select(Job).order_by(Job.id.desc()).limit(100)).scalars().all()
+def list_jobs(
+    channel_id: int | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    q = select(Job).order_by(Job.id.desc()).limit(200)
+    if channel_id is not None:
+        q = q.where(Job.channel_id == channel_id)
+    if status is not None:
+        q = q.where(Job.status == status)
+    return db.execute(q).scalars().all()
+
+
+@router.post("", response_model=JobOut, status_code=201)
+def create_job_endpoint(
+    payload: CreateJobRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    channel = db.get(Channel, payload.channel_id)
+    if not channel:
+        raise NotFoundError("Channel not found")
+    if payload.topic_id is not None:
+        from app.models.content import Topic
+
+        topic = db.get(Topic, payload.topic_id)
+        if not topic or topic.channel_id != channel.id:
+            raise NotFoundError("Topic not found for this channel")
+    job = controller.create(
+        db, channel=channel, mode=payload.mode, test_run=payload.test_run, topic_id=payload.topic_id
+    )
+    db.commit()
+    if payload.run:
+        job = controller.start(db, job, async_=payload.run_async)
+    db.refresh(job)
+    return job
+
+
+@router.post("/{public_id}:run", response_model=JobOut)
+def run_job(
+    public_id: str,
+    async_: bool = False,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    job = controller.start(db, _job(db, public_id), async_=async_)
+    db.refresh(job)
+    return job
+
+
+@router.post("/{public_id}:approve", response_model=JobOut)
+def approve_job(public_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    job = controller.approve(db, _job(db, public_id), by=user.email)
+    db.refresh(job)
+    return job
+
+
+@router.post("/{public_id}:reject", response_model=JobOut)
+def reject_job(
+    public_id: str,
+    payload: JobActionRequest | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    job = controller.reject(db, _job(db, public_id), reason=(payload.reason if payload else ""))
+    db.refresh(job)
+    return job
+
+
+@router.post("/{public_id}:retry", response_model=JobOut)
+def retry_job(
+    public_id: str,
+    async_: bool = False,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    job = controller.retry(db, _job(db, public_id), async_=async_)
+    db.refresh(job)
+    return job
+
+
+@router.post("/{public_id}:cancel", response_model=JobOut)
+def cancel_job(public_id: str, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    job = controller.cancel(db, _job(db, public_id))
+    db.refresh(job)
+    return job
 
 
 @router.get("/{public_id}", response_model=JobOut)

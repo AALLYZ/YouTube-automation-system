@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-_Last updated: 2026-09-07 · Current phase: **Phase 6 complete → Phase 7 next**_
+_Last updated: 2026-09-07 · Current phase: **Phase 7 complete → Phase 8 next**_
 
 ## Legend
 ✅ done · 🔄 in progress · ⬜ not started · ⚠️ blocked
@@ -15,7 +15,7 @@ _Last updated: 2026-09-07 · Current phase: **Phase 6 complete → Phase 7 next*
 | 4 | Media pipeline (voice, visuals, subs, render) | ✅ | `POST /api/jobs/{id}/media:run`, `GET /api/jobs/{id}/video` |
 | 5 | YouTube (OAuth, metadata, upload, thumbnail) | ✅ | `GET /api/youtube/status`, `POST /api/jobs/{id}/publish:run` |
 | 6 | WhatsApp notifications | ✅ | `POST /api/notifications/test`, `GET /api/notifications` |
-| 7 | Controller / queue / scheduler | ⬜ | `POST /api/jobs`, `GET /api/jobs/{id}` |
+| 7 | Controller / queue / scheduler | ✅ | `POST /api/jobs`, `POST /api/jobs/{id}:approve\|:retry\|:cancel`, `POST /api/scheduler/run` |
 | 8 | Admin dashboard | ⬜ | dashboard at `/` |
 | 9 | Testing & test mode | ⬜ | `GET /api/health/deep` |
 | 10 | Production / deploy / security | ⬜ | full system on `PUBLIC_HOST` |
@@ -207,6 +207,45 @@ keep the app in "Testing" with the channel owner as a test user, then set
   + "sends" via console, webhook status update, pipeline emits `video_ready` +
   `published`.
 
+## Phase 7 — completed
+
+- **Pipeline** (`workflows/pipeline.py`): the full 16-stage order
+  `TOPIC → RESEARCH → SCRIPT → SCRIPT_QA → VOICE → VISUALS → SUBTITLES →
+  TIMELINE → RENDER → THUMBNAIL → METADATA → FINAL_QA → APPROVAL_GATE →
+  UPLOAD → NOTIFY → COMPLETE`. Each stage handler calls a pure stage service;
+  the pipeline owns `job_steps`, retries, progress %, cost roll-up, and
+  start/finish notifications. **Resume-from-stage**: stages with a `SUCCEEDED`
+  step are skipped, so a job drafted via `scripts:draft` continues from `VOICE`.
+- **Retry/backoff** (`workflows/retry.py`): per stage, up to `MAX_STAGE_RETRIES`
+  attempts, exponential backoff, but only for retryable error codes
+  (`PROVIDER_*`, `RENDER_FAILED`, `UPLOAD_FAILED`); `QA_FAILED` / `VALIDATION`
+  fail fast. Each attempt is its own `job_steps` row.
+- **`services/final_qa.py`**: 14 deterministic checks on the assembled artifact
+  (video ready + streams + duration tolerance, metadata title/description/tags,
+  selected thumbnail, burned subtitles) → `QA_FAILED` on any miss.
+- **Approval gate**: `AUTO` runs straight through; `APPROVAL_REQUIRED` / `MANUAL`
+  set `status=WAITING_APPROVAL` and stop before `UPLOAD`. `…:approve` writes a
+  `SUCCEEDED` `APPROVAL_GATE` step and resumes; `…:reject` / `…:cancel` →
+  `CANCELLED`; `…:retry` re-runs a `FAILED` job from its first unfinished stage.
+- **Controller** (`workflows/controller.py`): `create`, `start` (inline by
+  default; enqueues to RQ when `JOBS_ASYNC=true`), `approve` / `reject` /
+  `retry` / `cancel`.
+- **Workers** (`workers/`): `queue.py` (RQ `pipeline` queue), `tasks.run_pipeline_task`,
+  `run.py` entrypoint — `make worker`. Optional; the API runs inline otherwise.
+- **Scheduler** (`scheduler/scheduler.py`): APScheduler cron per active
+  automation-enabled channel at its `publish_time`. `tick_channel()` inserts a
+  unique `scheduler_runs(channel_id, run_date)` row as the **dedup lock** (a
+  second tick the same day is a no-op, even across processes), then creates jobs
+  up to `daily_video_limit` minus jobs already made today and starts each.
+  Started from the app lifespan when `SCHEDULER_ENABLED=true`.
+- Routes: `POST /api/jobs` (create + run, `run_async` to queue), `POST
+  /api/jobs/{id}:run|:approve|:reject|:retry|:cancel`, `GET /api/jobs` (filter
+  by channel/status), `POST /api/scheduler/run` (+ `/status`, `/runs`).
+- **41 pytest tests green** (was 29): full AUTO pipeline → playable mp4 +
+  stub upload, approval-gate pause/resume, resume-after-draft, retryable-stage
+  recovery (fail·fail·pass), non-retryable fail → `:retry` recovers, scheduler
+  dedup + daily-limit accounting. Verified live via `POST /api/jobs`.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
@@ -215,11 +254,10 @@ keep the app in "Testing" with the channel owner as a test user, then set
 4. **Python 3.11 install** on this machine (recommended) — proceed on 3.9 otherwise.
 5. Rotate the exposed Anthropic key and provide the new one via `.env` (not committed).
 
-## Next actions (Phase 7 — Controller / orchestration)
+## Next actions (Phase 8 — Dashboard)
 
-See `IMPLEMENTATION_PLAN.md` → "PHASE 7". `workflows/controller.py` (full stage
-map TOPIC→…→COMPLETE) + `pipeline.run_pipeline(job_id)`, RQ wiring
-(`workers/`), `MAX_CONCURRENT_JOBS`, retry/backoff + resume-from-stage,
-APScheduler daily topic→job creation with `scheduler_runs` dedup lock +
-`DAILY_VIDEO_LIMIT`, approval gate. Endpoints: `POST /api/jobs` (create+run),
-live `GET /api/jobs/{id}`, `POST /api/jobs/{id}:approve|:reject|:retry|:cancel`.
+See `IMPLEMENTATION_PLAN.md` → "PHASE 8". Vite + React + TS + Tailwind SPA
+(auth, API client, layout), pages: Overview, Automation, Topics, Scripts,
+Videos, YouTube, Notifications, Logs, Settings (AI panel), Setup Wizard,
+Test-Mode toggle; served as a static build from FastAPI at `/`. New endpoint:
+`GET /api/overview` stats.

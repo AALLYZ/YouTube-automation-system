@@ -90,6 +90,7 @@ class Settings(BaseSettings):
 
     # ---- Automation / limits ----
     scheduler_enabled: bool = False
+    jobs_async: bool = False  # True = enqueue pipeline runs to RQ; False = run inline
     max_concurrent_jobs: int = 1
     max_stage_retries: int = 3
     retry_backoff_base_sec: int = 10

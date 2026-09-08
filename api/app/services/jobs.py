@@ -27,10 +27,11 @@ def create_job(
     test_run: bool = False,
     topic_id: int | None = None,
 ) -> Job:
+    raw_mode = mode or (channel.settings.approval_mode if channel.settings else ApprovalMode.APPROVAL_REQUIRED)
     job = Job(
         public_id=new_public_id(db),
         channel_id=channel.id,
-        mode=mode or (channel.settings.approval_mode if channel.settings else ApprovalMode.APPROVAL_REQUIRED),
+        mode=ApprovalMode(raw_mode),
         test_run=test_run,
         status=JobStatus.QUEUED,
         current_stage=Stage.TOPIC,

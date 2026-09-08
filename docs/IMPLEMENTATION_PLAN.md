@@ -247,13 +247,15 @@ phase (the "endpoint after every phase" requirement).
 - [x] `pytest` (29 total): template render, preferences, dedup, no-recipient, webhook status update, meta verify, pipeline emits
 - **Endpoint:** `POST /api/notifications/test`, `GET /api/notifications`
 
-### PHASE 7 — Controller / orchestration
-- [ ] `workflows/controller.py` full stage map + `pipeline.run_pipeline`
-- [ ] RQ wiring (`workers/`), `MAX_CONCURRENT_JOBS`, retry/backoff, resume-from-stage
-- [ ] APScheduler: daily topic→job creation, dedup lock, `DAILY_VIDEO_LIMIT`
-- [ ] approval gate + approve/reject/cancel/retry endpoints
-- [ ] `pytest`: full pipeline end-to-end with all stubs (real mp4 out), failure-injection retry test, scheduler dedup
-- **Endpoint:** `POST /api/jobs` (create+run), `GET /api/jobs/{id}` (live progress), `POST /api/jobs/{id}:approve|:reject|:retry|:cancel`
+### PHASE 7 — Controller / orchestration ✅
+- [x] `workflows/pipeline.py` — 16-stage order, stage handlers over pure services, resume-from-stage
+- [x] `workflows/retry.py` — per-stage exponential backoff, retryable-codes only; `workflows/controller.py`
+- [x] RQ wiring (`workers/queue|tasks|run.py`, `make worker`), `JOBS_ASYNC` toggle (inline by default)
+- [x] APScheduler (`scheduler/scheduler.py`): per-channel cron, `scheduler_runs` unique row as dedup lock, `daily_video_limit` accounting
+- [x] approval gate (`WAITING_APPROVAL` before UPLOAD) + `:approve|:reject|:retry|:cancel`
+- [x] `services/final_qa.py` — 14 deterministic pre-upload checks
+- [x] `pytest` (41 total): full AUTO pipeline → mp4 + upload, approval pause/resume, resume-after-draft, retryable recovery, non-retryable + `:retry`, scheduler dedup/limit
+- **Endpoint:** `POST /api/jobs`, `POST /api/jobs/{id}:run|:approve|:reject|:retry|:cancel`, `POST /api/scheduler/run`
 
 ### PHASE 8 — Dashboard
 - [ ] Vite app, auth, API client, layout

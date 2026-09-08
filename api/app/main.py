@@ -17,7 +17,16 @@ log = get_logger("app")
 async def lifespan(app: FastAPI):
     configure_logging()
     log.info("Starting ytauto API in %s mode", settings.app_env)
-    yield
+    if settings.scheduler_enabled:
+        from app.scheduler.scheduler import start_scheduler
+
+        start_scheduler()
+    try:
+        yield
+    finally:
+        from app.scheduler.scheduler import stop_scheduler
+
+        stop_scheduler()
 
 
 def create_app() -> FastAPI:
@@ -42,6 +51,7 @@ def create_app() -> FastAPI:
         health,
         jobs,
         notifications,
+        scheduler,
         scripts,
         storage,
         topics,
@@ -59,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(youtube.router, prefix="/api")
     app.include_router(notifications.router, prefix="/api")
     app.include_router(webhooks.router, prefix="/api")
+    app.include_router(scheduler.router, prefix="/api")
 
     @app.get("/")
     def root() -> dict:
