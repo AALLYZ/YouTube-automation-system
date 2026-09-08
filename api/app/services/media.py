@@ -4,7 +4,7 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.enums import Stage
+from app.core.enums import NotificationEvent, Stage
 from app.core.logging import get_logger
 from app.models.channel import Channel
 from app.models.content import Script
@@ -80,6 +80,8 @@ def run_media_stage(db: Session, job: Job, channel: Channel, stage: str) -> dict
         job.status = "FAILED"
         job.error_code = code
         job.error_message = exc.message
+        _notify(db, job, channel, NotificationEvent.ERROR,
+                {"stage": step_stage.value, "error_code": code, "error_message": exc.message})
         db.commit()
         raise
 
@@ -88,9 +90,26 @@ def run_media_stage(db: Session, job: Job, channel: Channel, stage: str) -> dict
     job.total_cost_usd = db.execute(
         select(func.coalesce(func.sum(ApiUsage.est_cost_usd), 0.0)).where(ApiUsage.job_id == job.id)
     ).scalar_one()
+    if stage == "render":
+        _notify(db, job, channel, NotificationEvent.VIDEO_READY, {
+            "duration_min": round((out.get("duration_sec") or 0) / 60, 1),
+            "cost_usd": job.total_cost_usd,
+        })
     db.commit()
     log.info("media stage %s done for %s: %s", stage, job.public_id, out)
     return out
+
+
+def _notify(db: Session, job: Job, channel: Channel, event, context: dict) -> None:
+    from app.models.content import Topic
+    from app.services.notifications import safe_notify
+
+    ctx = dict(context)
+    if job.topic_id:
+        topic = db.get(Topic, job.topic_id)
+        if topic:
+            ctx.setdefault("topic", topic.title)
+    safe_notify(db, event=event, channel=channel, job=job, context=ctx)
 
 
 def run_media_pipeline(db: Session, job: Job, channel: Channel) -> dict:

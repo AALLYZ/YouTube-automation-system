@@ -167,6 +167,7 @@ def run_upload(db: Session, *, job: Job, channel: Channel) -> dict[str, Any]:
     db.flush()
 
     out = {
+        "title": row.title,
         "youtube_video_id": result.video_id,
         "youtube_url": result.url,
         "status": row.status.value,

@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-_Last updated: 2026-09-07 · Current phase: **Phase 5 complete → Phase 6 next**_
+_Last updated: 2026-09-07 · Current phase: **Phase 6 complete → Phase 7 next**_
 
 ## Legend
 ✅ done · 🔄 in progress · ⬜ not started · ⚠️ blocked
@@ -14,7 +14,7 @@ _Last updated: 2026-09-07 · Current phase: **Phase 5 complete → Phase 6 next*
 | 3 | AI pipeline (topic, research, script, QA) | ✅ | `POST /api/channels/{id}/topics:generate`, `POST /api/channels/{id}/scripts:draft` |
 | 4 | Media pipeline (voice, visuals, subs, render) | ✅ | `POST /api/jobs/{id}/media:run`, `GET /api/jobs/{id}/video` |
 | 5 | YouTube (OAuth, metadata, upload, thumbnail) | ✅ | `GET /api/youtube/status`, `POST /api/jobs/{id}/publish:run` |
-| 6 | WhatsApp notifications | ⬜ | `POST /api/notifications/test` |
+| 6 | WhatsApp notifications | ✅ | `POST /api/notifications/test`, `GET /api/notifications` |
 | 7 | Controller / queue / scheduler | ⬜ | `POST /api/jobs`, `GET /api/jobs/{id}` |
 | 8 | Admin dashboard | ⬜ | dashboard at `/` |
 | 9 | Testing & test mode | ⬜ | `GET /api/health/deep` |
@@ -177,6 +177,36 @@ Google Cloud (YouTube Data API v3 enabled), add
 keep the app in "Testing" with the channel owner as a test user, then set
 `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and `YOUTUBE_PROVIDER=google`.
 
+## Phase 6 — completed
+
+- **Providers** (`providers/notifier/`): `ConsoleNotifier` (logs — safe default),
+  `StubNotifier` (records sends for tests), `TwilioWhatsApp` (`messages.create`
+  with optional `status_callback`), `MetaCloudWhatsApp` (Graph API v21 text
+  message). `registry.get_notifier()`.
+- **Templates** (`services/notifications.py`): 4 WhatsApp-formatted templates —
+  `job_started`, `video_ready`, `published`, `error` — rendered from a context
+  dict.
+- **`notify()`**: honours per-channel `channel_settings.notify_events`
+  preferences (`force=True` bypasses), dedups to at most one non-failed row per
+  `(job_id, event)`, resolves the recipient from `whatsapp_cfg.to` → `WHATSAPP_TO`
+  (missing recipient → row saved `FAILED`, pipeline continues), then delivers via
+  the configured provider and records `provider_message_id` + status.
+  `safe_notify()` is the never-raises variant used inside pipeline stages.
+- **Pipeline wiring**: render success → `video_ready`; upload success →
+  `published`; any media/publish stage `AppError` → `error`. Delivery failures
+  never fail the job.
+- **Inbound webhooks**: `POST /api/webhooks/twilio` (form; `RequestValidator`
+  signature check when `TWILIO_AUTH_TOKEN` is set, else logged-skip) and
+  `GET/POST /api/webhooks/meta` (GET = `hub.challenge` verification against
+  `META_VERIFY_TOKEN`; POST = `statuses[]`) map carrier status →
+  `queued/sent/delivered/read/failed` on the matching notification, forward-only,
+  stamping `delivered_at`.
+- Routes: `POST /api/notifications/test`, `GET /api/notifications`
+  (filter by `channel_id` / `job_id` / `event`), the two webhook paths.
+- **29 pytest tests green** (was 20). Verified live: `notifications/test` renders
+  + "sends" via console, webhook status update, pipeline emits `video_ready` +
+  `published`.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
@@ -185,10 +215,11 @@ keep the app in "Testing" with the channel owner as a test user, then set
 4. **Python 3.11 install** on this machine (recommended) — proceed on 3.9 otherwise.
 5. Rotate the exposed Anthropic key and provide the new one via `.env` (not committed).
 
-## Next actions (Phase 6 — WhatsApp)
+## Next actions (Phase 7 — Controller / orchestration)
 
-See `IMPLEMENTATION_PLAN.md` → "PHASE 6". `NotifierProvider` adapters
-(`console`, `twilio`, `meta_cloud`, `stub`), 4 templates (job_started,
-video_ready, published, error) with per-channel preferences + `notifications`
-dedup, inbound webhook `POST /api/webhooks/twilio` (signature verify) → delivery
-status. Endpoint: `POST /api/notifications/test`, `GET /api/notifications`.
+See `IMPLEMENTATION_PLAN.md` → "PHASE 7". `workflows/controller.py` (full stage
+map TOPIC→…→COMPLETE) + `pipeline.run_pipeline(job_id)`, RQ wiring
+(`workers/`), `MAX_CONCURRENT_JOBS`, retry/backoff + resume-from-stage,
+APScheduler daily topic→job creation with `scheduler_runs` dedup lock +
+`DAILY_VIDEO_LIMIT`, approval gate. Endpoints: `POST /api/jobs` (create+run),
+live `GET /api/jobs/{id}`, `POST /api/jobs/{id}:approve|:reject|:retry|:cancel`.

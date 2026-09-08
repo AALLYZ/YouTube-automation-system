@@ -12,6 +12,7 @@ from app.core.errors import AppError, ErrorCode
 from app.providers.base import (
     AIProvider,
     ImageProvider,
+    NotifierProvider,
     ResearchProvider,
     StockMediaProvider,
     StorageProvider,
@@ -131,9 +132,31 @@ def get_youtube() -> YouTubeProvider:
     raise AppError(f"Unknown YOUTUBE_PROVIDER: {p}", code=ErrorCode.CONFIG)
 
 
+@lru_cache
+def get_notifier() -> NotifierProvider:
+    p = settings.notifier_provider
+    if p == "twilio":
+        from app.providers.notifier.twilio_wa import TwilioWhatsApp
+
+        return TwilioWhatsApp()
+    if p == "meta_cloud":
+        from app.providers.notifier.meta_cloud import MetaCloudWhatsApp
+
+        return MetaCloudWhatsApp()
+    if p == "stub":
+        from app.providers.notifier.stub import StubNotifier
+
+        return StubNotifier()
+    if p == "console":
+        from app.providers.notifier.console import ConsoleNotifier
+
+        return ConsoleNotifier()
+    raise AppError(f"Unknown NOTIFIER_PROVIDER: {p}", code=ErrorCode.CONFIG)
+
+
 def reset_providers() -> None:
     for fn in (
         get_storage, get_ai, get_research, get_voice, get_image, get_stock,
-        get_video_clip, get_youtube,
+        get_video_clip, get_youtube, get_notifier,
     ):
         fn.cache_clear()

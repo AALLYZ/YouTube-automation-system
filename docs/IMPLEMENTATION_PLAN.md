@@ -239,11 +239,12 @@ phase (the "endpoint after every phase" requirement).
 - [x] `pytest` (20 total): publish pipeline vs stub, metadata/thumbnail shape, OAuth state roundtrip, quota guard, status endpoint
 - **Endpoint:** `GET /api/youtube/status`, `POST /api/jobs/{id}/publish:run`, `POST /api/jobs/{id}/stages/{thumbnail|metadata|upload}:run`, `GET /api/jobs/{id}/upload`
 
-### PHASE 6 — WhatsApp
-- [ ] NotifierProvider: `console`, `twilio`, `meta_cloud`, `stub`
-- [ ] 4 templates (job_started, video_ready, published, error) + preferences + dedup
-- [ ] webhook: `POST /api/webhooks/twilio` (+ meta) with signature verify → update `notifications`
-- [ ] `pytest`: template render, dedup, webhook status update
+### PHASE 6 — WhatsApp ✅
+- [x] NotifierProvider: `console`, `twilio`, `meta_cloud`, `stub` + `registry.get_notifier()`
+- [x] 4 templates (job_started, video_ready, published, error) + `notify_events` preferences + `(job_id, event)` dedup
+- [x] webhook: `POST /api/webhooks/twilio` (RequestValidator signature) + `GET/POST /api/webhooks/meta` → forward-only status on `notifications`
+- [x] pipeline wiring: render→video_ready, upload→published, stage error→error (never fatal)
+- [x] `pytest` (29 total): template render, preferences, dedup, no-recipient, webhook status update, meta verify, pipeline emits
 - **Endpoint:** `POST /api/notifications/test`, `GET /api/notifications`
 
 ### PHASE 7 — Controller / orchestration
