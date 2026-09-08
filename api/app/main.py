@@ -41,11 +41,16 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    from app.core.ratelimit import RateLimitMiddleware
+
+    app.add_middleware(RateLimitMiddleware)
+
     @app.exception_handler(AppError)
     async def _app_error_handler(_: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(status_code=exc.http_status, content=exc.to_dict())
 
     from app.api.routes import (
+        admin,
         auth,
         channels,
         health,
@@ -63,7 +68,7 @@ def create_app() -> FastAPI:
 
     for r in (
         health, auth, channels, topics, scripts, jobs, storage, youtube,
-        notifications, webhooks, scheduler, overview, logs,
+        notifications, webhooks, scheduler, overview, logs, admin,
     ):
         app.include_router(r.router, prefix="/api")
 

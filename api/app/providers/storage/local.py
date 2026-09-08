@@ -42,3 +42,16 @@ class LocalStorage(StorageProvider):
 
     def exists(self, key: str) -> bool:
         return os.path.exists(self._abs(key))
+
+    def delete(self, key: str) -> None:
+        path = self._abs(key)
+        if os.path.isfile(path):
+            os.remove(path)
+
+    def delete_prefix(self, prefix: str) -> int:
+        root = self._abs(prefix)
+        if not os.path.isdir(root):
+            return 0
+        count = sum(len(files) for _, _, files in os.walk(root))
+        shutil.rmtree(root, ignore_errors=True)
+        return count

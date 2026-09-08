@@ -10,11 +10,14 @@ from fastapi import FastAPI
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.staticfiles import StaticFiles
 
+from app.core.config import settings
 from app.core.logging import get_logger
 
 log = get_logger("web")
 
-DIST = pathlib.Path(__file__).resolve().parents[2] / "web" / "dist"
+DIST = pathlib.Path(
+    settings.web_dist or (pathlib.Path(__file__).resolve().parents[2] / "web" / "dist")
+)
 
 
 class SPAStaticFiles(StaticFiles):

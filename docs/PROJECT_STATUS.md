@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-_Last updated: 2026-09-07 · Current phase: **Phase 9 complete → Phase 10 next**_
+_Last updated: 2026-09-07 · Current phase: **Phase 10 complete — all 10 phases done**_
 
 ## Legend
 ✅ done · 🔄 in progress · ⬜ not started · ⚠️ blocked
@@ -18,7 +18,7 @@ _Last updated: 2026-09-07 · Current phase: **Phase 9 complete → Phase 10 next
 | 7 | Controller / queue / scheduler | ✅ | `POST /api/jobs`, `POST /api/jobs/{id}:approve\|:retry\|:cancel`, `POST /api/scheduler/run` |
 | 8 | Admin dashboard | ✅ | dashboard at `/`, `GET /api/overview` |
 | 9 | Testing & test mode | ✅ | `GET /api/health/deep` |
-| 10 | Production / deploy / security | ⬜ | full system on `PUBLIC_HOST` |
+| 10 | Production / deploy / security | ✅ | full system on `PUBLIC_HOST` (`docker-compose.prod.yml`) |
 
 ## Phase 1 — completed
 
@@ -297,6 +297,37 @@ keep the app in "Testing" with the channel owner as a test user, then set
   (`elevenlabs`, `openai`, `tavily`, `pexels`, `google/youtube`, `twilio`,
   `meta_cloud`) and the RQ worker loop.
 
+## Phase 10 — completed
+
+- **Docker**: `api/Dockerfile` — 2 stages (node builds `web/dist` → python 3.12
+  slim with ffmpeg + `uv`-installed deps + the dashboard), non-root `uid 10001`,
+  `tini` PID 1. `docker-entrypoint.sh` waits for the DB, runs `alembic upgrade
+  head` (skippable), optionally seeds, then execs the CMD.
+- **`docker-compose.prod.yml`**: `db` + `redis` (no published ports, named
+  volumes, healthchecks) + `api` (`:8000`, migrations + seed on boot, health
+  probe) + `worker` (same image, `python -m app.workers.run`, `JOBS_ASYNC=true`).
+  Shared `storage` volume. `.env.prod.example` → `.env.prod` (gitignored).
+- **Rate limiting** (`core/ratelimit.py`): in-process fixed-window ASGI
+  middleware — `/api/auth/login` 10/min, write routes 60/min, per client IP
+  (`X-Forwarded-For` aware). `RATE_LIMIT_ENABLED` (off in tests). 429 →
+  structured `RATE_LIMITED` JSON + `Retry-After`.
+- **Retention** (`services/retention.py`): deletes media for terminal jobs older
+  than `ARTIFACT_RETENTION_DAYS`; DB rows kept; `jobs.artifacts_pruned_at`
+  (migration `2bd14a8de2a5`) makes it idempotent. CLI `python -m
+  app.services.retention`, `POST /api/admin/retention`, nightly APScheduler job.
+- **Backups**: `scripts/backup.sh` — `pg_dump | gzip` + storage-volume tarball
+  into `./backups/`, keeps the last 14; restore steps in its header.
+- **Admin routes** (`/api/admin/*`, `role == admin`): `retention` (GET preview /
+  POST run), `config` (non-secret runtime snapshot).
+- **Security review** (`docs/SECURITY.md`): every ARCHITECTURE §8 control mapped
+  to its implementation and verified. Log redaction, storage root-jail, admin
+  role gate, and the rate limiter are covered by `tests/test_security.py`.
+- **CI**: added a `docker` job (build the prod image + import smoke test).
+- **`docs/DEPLOY.md`**: full runbook — first deploy, channel go-live, ops table,
+  health/monitoring, backups/retention, security minimums.
+- **82 pytest tests green** (was 74), 82 % coverage. Live-verified: rate limit
+  (10→429), `/api/admin/retention` preview + run, `/api/admin/config`.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
@@ -305,10 +336,15 @@ keep the app in "Testing" with the channel owner as a test user, then set
 4. **Python 3.11 install** on this machine (recommended) — proceed on 3.9 otherwise.
 5. Rotate the exposed Anthropic key and provide the new one via `.env` (not committed).
 
-## Next actions (Phase 10 — Production / deploy)
+## Status: all 10 phases complete
 
-See `IMPLEMENTATION_PLAN.md` → "PHASE 10". Dockerfiles (api, worker) + compose
-prod profile with an entrypoint that runs migrations; secret-manager notes;
-backup script (`pg_dump` + storage) + retention job; security review pass
-(ARCHITECTURE §8 checklist, rate limits, log-redaction verified); `docs/DEPLOY.md`
-runbook. Deliverable: the whole system behind auth on `PUBLIC_HOST`.
+The full pipeline (topic → research → script → QA → voice → visuals → subtitles
+→ timeline → render → thumbnail → metadata → final QA → approval → upload →
+notify) runs end-to-end. Offline on stub providers with zero keys; swap in
+Anthropic / ElevenLabs / OpenAI / Pexels / Google / Twilio via env vars.
+Deploy: `cp .env.prod.example .env.prod` (fill secrets) →
+`docker compose -f docker-compose.prod.yml up -d --build`. See `docs/DEPLOY.md`.
+
+Follow-up ideas (not blocking): real-provider integration tests behind a
+`--live` flag, S3 storage adapter, multi-user RBAC, Prometheus metrics endpoint,
+per-channel cost budgets.

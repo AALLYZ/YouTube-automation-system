@@ -97,6 +97,18 @@ def _scheduled_tick(channel_id: int) -> None:
         db.close()
 
 
+def _scheduled_retention() -> None:
+    from app.services.retention import prune_artifacts
+
+    db = SessionLocal()
+    try:
+        prune_artifacts(db)
+    except Exception:  # noqa: BLE001
+        log.exception("scheduled retention run failed")
+    finally:
+        db.close()
+
+
 def start_scheduler() -> None:
     global _scheduler
     if _scheduler is not None or not settings.scheduler_enabled:
@@ -122,8 +134,16 @@ def start_scheduler() -> None:
             )
     finally:
         db.close()
+
+    _scheduler.add_job(
+        _scheduled_retention,
+        CronTrigger(hour=3, minute=30),
+        id="artifact-retention",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
     _scheduler.start()
-    log.info("APScheduler started with %d channel tick(s)", len(_scheduler.get_jobs()))
+    log.info("APScheduler started with %d job(s)", len(_scheduler.get_jobs()))
 
 
 def stop_scheduler() -> None:

@@ -98,6 +98,12 @@ class Settings(BaseSettings):
     artifact_retention_days: int = 30
     yt_daily_quota_units: int = 10000
 
+    # ---- Hardening ----
+    rate_limit_enabled: bool = True
+    rate_limit_login_per_min: int = 10
+    rate_limit_write_per_min: int = 60
+    web_dist: Optional[str] = None  # override the served dashboard build dir
+
     @field_validator("cors_origins")
     @classmethod
     def _strip(cls, v: str) -> str:

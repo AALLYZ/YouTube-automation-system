@@ -10,7 +10,12 @@ venv/
 .env
 .env.*
 !.env.example
+!.env.prod.example
+.env.prod
 *.key
+
+# Backups
+backups/
 
 # Node
 node_modules/

@@ -14,6 +14,7 @@ os.environ.setdefault("APP_SECRET_KEY", "test-secret-key-00000000000000000000000
 os.environ.setdefault("ADMIN_EMAIL", "admin@example.com")
 os.environ.setdefault("ADMIN_PASSWORD", "test-admin-pass")
 os.environ.setdefault("STORAGE_LOCAL_ROOT", "/tmp/ytauto-test-storage")
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 import sqlalchemy as sa  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

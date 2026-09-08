@@ -170,6 +170,14 @@ class StorageProvider(abc.ABC):
     @abc.abstractmethod
     def exists(self, key: str) -> bool: ...
 
+    def delete(self, key: str) -> None:
+        """Delete one object. Best-effort; missing key is not an error."""
+        raise NotImplementedError
+
+    def delete_prefix(self, prefix: str) -> int:
+        """Delete every object under a key prefix. Returns count removed."""
+        raise NotImplementedError
+
 
 class YouTubeProvider(abc.ABC):
     name: str = "base"

@@ -1,7 +1,7 @@
 VENV := .venv/bin
 PORT ?= 8090
 
-.PHONY: install migrate seed run worker test coverage fmt web web-dev
+.PHONY: install migrate seed run worker test coverage fmt web web-dev retention prod-up prod-down backup
 
 install:
 	uv venv --python 3.12 .venv
@@ -35,3 +35,17 @@ web:
 # Run the dashboard dev server (proxies /api -> :8090)
 web-dev:
 	cd ../web && npm run dev
+
+# Prune media for terminal jobs older than ARTIFACT_RETENTION_DAYS
+retention:
+	$(VENV)/python -m app.services.retention $(ARGS)
+
+# Production stack (needs ../.env.prod)
+prod-up:
+	cd .. && docker compose -f docker-compose.prod.yml up -d --build
+
+prod-down:
+	cd .. && docker compose -f docker-compose.prod.yml down
+
+backup:
+	cd .. && ./scripts/backup.sh

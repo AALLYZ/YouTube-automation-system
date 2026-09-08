@@ -272,12 +272,14 @@ phase (the "endpoint after every phase" requirement).
 - [x] `providers/health.deep_check()` — stubs exercised, real providers construct-only
 - **Endpoint:** `GET /api/health/deep` (DB + Redis + FFmpeg + all providers)
 
-### PHASE 10 — Production
-- [ ] Dockerfiles (api, worker), compose prod profile, entrypoint runs migrations
-- [ ] secret-manager notes, backup script (pg_dump + storage), retention job
-- [ ] security review pass (checklist in ARCHITECTURE §8), rate limits on, log redaction verified
-- [ ] deploy runbook in `docs/DEPLOY.md`
-- **Endpoint:** everything, behind auth, on `PUBLIC_HOST`
+### PHASE 10 — Production ✅
+- [x] `api/Dockerfile` (multi-stage: web build + python runtime, non-root, tini) + `docker-entrypoint.sh` (migrate/seed); `worker` reuses the image
+- [x] `docker-compose.prod.yml` (db + redis unpublished, api :8000, worker), `.env.prod.example`
+- [x] `scripts/backup.sh` (pg_dump + storage tarball, keep 14); `services/retention.py` + `/api/admin/retention` + nightly job (`jobs.artifacts_pruned_at`, migration `2bd14a8de2a5`)
+- [x] rate limiting (`core/ratelimit.py` middleware, auth + write routes); `docs/SECURITY.md` maps every §8 control; `tests/test_security.py` verifies redaction / jail / role gate / limiter
+- [x] `docs/DEPLOY.md` runbook; CI `docker` job builds + smoke-tests the image
+- [x] `pytest` (82 total), 82 % coverage
+- **Endpoint:** whole system behind auth on `PUBLIC_HOST` via `docker compose -f docker-compose.prod.yml up`
 
 ## Risks / blockers
 

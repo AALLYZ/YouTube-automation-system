@@ -38,6 +38,7 @@ class Job(Base, TimestampMixin):
     total_duration_sec: Mapped[float] = mapped_column(Float, default=0)
     started_at: Mapped[Optional[dt.datetime]] = mapped_column()
     finished_at: Mapped[Optional[dt.datetime]] = mapped_column()
+    artifacts_pruned_at: Mapped[Optional[dt.datetime]] = mapped_column()
 
     steps: Mapped[list["JobStep"]] = relationship(
         back_populates="job", cascade="all, delete-orphan", order_by="JobStep.id"

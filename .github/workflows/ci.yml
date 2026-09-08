@@ -67,3 +67,14 @@ jobs:
           node-version: "20"
       - run: npm install
       - run: npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build -f api/Dockerfile -t ytauto-api:ci .
+      - name: Smoke-test the image boots
+        run: |
+          docker run --rm -e RUN_MIGRATIONS=false -e DATABASE_URL= \
+            ytauto-api:ci python -c "import app.main; print('app imports OK')"
