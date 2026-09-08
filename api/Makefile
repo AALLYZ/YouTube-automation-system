@@ -1,7 +1,7 @@
 VENV := .venv/bin
 PORT ?= 8090
 
-.PHONY: install migrate seed run worker test fmt web web-dev
+.PHONY: install migrate seed run worker test coverage fmt web web-dev
 
 install:
 	uv venv --python 3.12 .venv
@@ -24,6 +24,9 @@ worker:
 
 test:
 	$(VENV)/python -m pytest -q
+
+coverage:
+	$(VENV)/python -m pytest -q --cov=app --cov-report=term-missing --cov-fail-under=70
 
 # Build the dashboard into web/dist (served by FastAPI at /)
 web:

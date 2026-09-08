@@ -27,3 +27,7 @@ storage/**
 .python-version
 *.egg-info/
 api/.venv/
+
+.coverage
+htmlcov/
+coverage.xml

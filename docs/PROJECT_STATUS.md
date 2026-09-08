@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-_Last updated: 2026-09-07 · Current phase: **Phase 8 complete → Phase 9 next**_
+_Last updated: 2026-09-07 · Current phase: **Phase 9 complete → Phase 10 next**_
 
 ## Legend
 ✅ done · 🔄 in progress · ⬜ not started · ⚠️ blocked
@@ -17,7 +17,7 @@ _Last updated: 2026-09-07 · Current phase: **Phase 8 complete → Phase 9 next*
 | 6 | WhatsApp notifications | ✅ | `POST /api/notifications/test`, `GET /api/notifications` |
 | 7 | Controller / queue / scheduler | ✅ | `POST /api/jobs`, `POST /api/jobs/{id}:approve\|:retry\|:cancel`, `POST /api/scheduler/run` |
 | 8 | Admin dashboard | ✅ | dashboard at `/`, `GET /api/overview` |
-| 9 | Testing & test mode | ⬜ | `GET /api/health/deep` |
+| 9 | Testing & test mode | ✅ | `GET /api/health/deep` |
 | 10 | Production / deploy / security | ⬜ | full system on `PUBLIC_HOST` |
 
 ## Phase 1 — completed
@@ -273,6 +273,30 @@ keep the app in "Testing" with the channel owner as a test user, then set
   real pipeline run, SPA root + deep-link fallback. Verified live in a browser:
   login → every page renders against the running API.
 
+## Phase 9 — completed
+
+- **`GET /api/health/deep`** (auth): DB + Redis + FFmpeg/FFprobe resolution +
+  `providers/health.deep_check()` — stub providers are exercised for real
+  (storage round-trip, a completion, a synth wav, a generated png, …); real
+  providers are only *constructed* (validates config, no network). Overall
+  `status` is `ok` only when every check passes.
+- **TEST mode hardened**: `test_run` jobs already force `StubYouTube`; now
+  `notify()` also swaps a real WhatsApp provider (`twilio` / `meta_cloud`) for
+  the console logger on `test_run` jobs, so a test run never delivers a paid
+  message. Row provider shows e.g. `console (test)`.
+- **Coverage**: `pytest-cov` wired (`make coverage`, `--cov-fail-under=70`).
+  **74 tests, 82 % line coverage** (was 45 / 78 %). New: `test_units.py`
+  (pricing, security/JWT/Fernet, retry backoff, topic scoring, metadata
+  helpers, status mapping, registry errors, ffmpeg escaping), `test_health_deep.py`,
+  `test_test_mode.py`, `test_youtube_oauth.py` (mocked Google flow → 36 %→78 %
+  on that module), `test_workers.py` (enqueue + task entrypoint mocked).
+- **CI**: `.github/workflows/ci.yml` — Postgres 16 + Redis 7 services, `uv` +
+  Python 3.12, apt `ffmpeg`, `pytest --cov-fail-under=70`; second job builds the
+  dashboard (`npm run build`).
+- Uncovered by design: real provider adapters that need live APIs
+  (`elevenlabs`, `openai`, `tavily`, `pexels`, `google/youtube`, `twilio`,
+  `meta_cloud`) and the RQ worker loop.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
@@ -281,9 +305,10 @@ keep the app in "Testing" with the channel owner as a test user, then set
 4. **Python 3.11 install** on this machine (recommended) — proceed on 3.9 otherwise.
 5. Rotate the exposed Anthropic key and provide the new one via `.env` (not committed).
 
-## Next actions (Phase 9 — Testing & test mode)
+## Next actions (Phase 10 — Production / deploy)
 
-See `IMPLEMENTATION_PLAN.md` → "PHASE 9". Broaden unit + integration + pipeline
-+ failure-injection coverage toward ~70%; verify TEST mode end to end; add
-fixtures/seed helpers and a CI workflow. New endpoint: `GET /api/health/deep`
-(all providers self-check).
+See `IMPLEMENTATION_PLAN.md` → "PHASE 10". Dockerfiles (api, worker) + compose
+prod profile with an entrypoint that runs migrations; secret-manager notes;
+backup script (`pg_dump` + storage) + retention job; security review pass
+(ARCHITECTURE §8 checklist, rate limits, log-redaction verified); `docs/DEPLOY.md`
+runbook. Deliverable: the whole system behind auth on `PUBLIC_HOST`.

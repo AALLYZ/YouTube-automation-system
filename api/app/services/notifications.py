@@ -96,6 +96,18 @@ def _recipient(channel: Channel) -> Optional[str]:
     return cfg.get("to") or cfg.get("recipient") or settings.whatsapp_to
 
 
+_REAL_WA = {"twilio", "meta_cloud"}
+
+
+def _delivery_provider(test_mode: bool):
+    """In test mode, real WhatsApp providers are swapped for the console logger."""
+    if test_mode and settings.notifier_provider in _REAL_WA:
+        from app.providers.notifier.console import ConsoleNotifier
+
+        return ConsoleNotifier()
+    return get_notifier()
+
+
 def _event_enabled(channel: Channel, event: NotificationEvent) -> bool:
     if not channel.settings:
         return True
@@ -137,8 +149,12 @@ def notify(
     template, body = render_template(event, context)
     recipient = _recipient(channel)
 
+    # test-mode jobs never touch a paid/real WhatsApp channel
+    test_mode = bool(job is not None and job.test_run)
+    provider = _delivery_provider(test_mode)
+
     row = existing or Notification(job_id=job.id if job else None, channel_id=channel.id, event=event)
-    row.provider = settings.notifier_provider
+    row.provider = f"{provider.name} (test)" if test_mode and provider.name != settings.notifier_provider else provider.name
     row.recipient = recipient or ""
     row.template = template
     row.body = body
@@ -157,7 +173,7 @@ def notify(
         return row
 
     try:
-        result = get_notifier().send(recipient=recipient, body=body)
+        result = provider.send(recipient=recipient, body=body)
         row.provider_message_id = result.message_id
         row.status = _map_status(result.status, default=NotificationStatus.SENT)
     except Exception as exc:  # noqa: BLE001 - delivery failure must not break the pipeline

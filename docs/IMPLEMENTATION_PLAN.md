@@ -265,10 +265,12 @@ phase (the "endpoint after every phase" requirement).
 - [x] `pytest` (45 total) + live browser walkthrough
 - **Endpoint:** dashboard at `/`, `GET /api/overview` stats
 
-### PHASE 9 — Testing
-- [ ] unit + integration + pipeline + failure tests; coverage target ~70%
-- [ ] `TEST` mode verified end to end; seed/fixtures; CI workflow
-- **Endpoint:** `GET /api/health/deep` (all providers self-check)
+### PHASE 9 — Testing ✅
+- [x] unit + integration + pipeline + failure tests — **74 tests, 82 % coverage** (`make coverage`, gate 70 %)
+- [x] `TEST` mode verified end to end (stub upload + real-WhatsApp→console swap on test_run)
+- [x] CI workflow `.github/workflows/ci.yml` (pg + redis + ffmpeg, cov gate; web build job)
+- [x] `providers/health.deep_check()` — stubs exercised, real providers construct-only
+- **Endpoint:** `GET /api/health/deep` (DB + Redis + FFmpeg + all providers)
 
 ### PHASE 10 — Production
 - [ ] Dockerfiles (api, worker), compose prod profile, entrypoint runs migrations
