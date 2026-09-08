@@ -36,11 +36,13 @@ def create_app() -> FastAPI:
     async def _app_error_handler(_: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(status_code=exc.http_status, content=exc.to_dict())
 
-    from app.api.routes import auth, channels, health, storage
+    from app.api.routes import auth, channels, health, scripts, storage, topics
 
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(channels.router, prefix="/api")
+    app.include_router(topics.router, prefix="/api")
+    app.include_router(scripts.router, prefix="/api")
     app.include_router(storage.router, prefix="/api")
 
     @app.get("/")

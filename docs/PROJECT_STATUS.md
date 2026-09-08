@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-_Last updated: 2026-09-07 · Current phase: **Phase 2 complete → Phase 3 next**_
+_Last updated: 2026-09-07 · Current phase: **Phase 3 complete → Phase 4 next**_
 
 ## Legend
 ✅ done · 🔄 in progress · ⬜ not started · ⚠️ blocked
@@ -11,7 +11,7 @@ _Last updated: 2026-09-07 · Current phase: **Phase 2 complete → Phase 3 next*
 |---|---|---|---|
 | 1 | Architecture & planning | ✅ | — (docs) |
 | 2 | Foundation (config, db, auth, storage) | ✅ | `GET /api/health`, `GET /api/channels` |
-| 3 | AI pipeline (topic, research, script, QA) | ⬜ | `POST /api/channels/{id}/topics:generate` |
+| 3 | AI pipeline (topic, research, script, QA) | ✅ | `POST /api/channels/{id}/topics:generate`, `POST /api/channels/{id}/scripts:draft` |
 | 4 | Media pipeline (voice, visuals, subs, render) | ⬜ | `POST /api/jobs/{id}/stages/render:run` |
 | 5 | YouTube (OAuth, metadata, upload, thumbnail) | ⬜ | `GET /api/youtube/status` |
 | 6 | WhatsApp notifications | ⬜ | `POST /api/notifications/test` |
@@ -63,6 +63,36 @@ _Last updated: 2026-09-07 · Current phase: **Phase 2 complete → Phase 3 next*
 Run: `docker compose up -d` then `cd api && make install && make migrate &&
 make seed && make run` → http://localhost:8090 (`/docs` for OpenAPI).
 
+## Phase 3 — completed
+
+- `AIProvider` / `ResearchProvider` interfaces finalised (`task` hint added for
+  stub routing). Registry getters: `get_ai`, `get_research` (+ `reset_providers`).
+- Adapters: **`StubAI`** (deterministic, per-task JSON: topics/research/script/
+  script_qa/revision), **`AnthropicAI`** (tenacity backoff, usage→cost),
+  **`OpenAIAI`** (json_mode), **`StubResearch`**, **`TavilyResearch`**.
+- `services/ai_helpers.py`: `ai_json()` (fenced-JSON extraction + one self-repair
+  retry) and `record_usage()` → `api_usage` rows.
+- `services/jobs.py`: `new_public_id` (`job_2026_00001`), `create_job`,
+  `start_step`/`finish_step`/`fail_step`.
+- `services/topics.py`: generate → weighted score (Interest+Uniqueness+Search+
+  Retention − Competition − Difficulty, normalised 0–100, weights from
+  `channel_settings.scoring_weights`) → fingerprint de-dupe (exact + in-batch) →
+  persist; `pick_best_topic`.
+- `services/research.py`: sources → LLM summary split into
+  facts/opinions/assumptions (+ "no research" path marks the script accordingly).
+- `services/script.py`: structured script (hook/intro/main/transitions/pattern
+  interrupts/CTA/ending/full_text) + scene rows; `revise_script`.
+- `services/script_qa.py`: deterministic checks (length band, hook/CTA/scene
+  presence, repetition) + LLM rubric; bounded auto-revision loop
+  (`MAX_STAGE_RETRIES`); status → FINAL / QA_FAILED.
+- Routes: `POST /channels/{id}/topics:generate`, `GET /channels/{id}/topics`,
+  `POST /topics/{id}:approve|:reject`, `POST /channels/{id}/scripts:draft`
+  (runs research→script→QA in a job, dev/test entrypoint for Phase 7),
+  `GET /scripts/{id}` (versions + scenes).
+- Model id default corrected `claude-sonnet-4-6` → `claude-sonnet-4-5` (stale env).
+- **11 pytest tests green** (was 7). Verified live: topics scored+sorted,
+  scripts:draft produces a 4-scene script + QA verdict + job cost.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
@@ -71,8 +101,9 @@ make seed && make run` → http://localhost:8090 (`/docs` for OpenAPI).
 4. **Python 3.11 install** on this machine (recommended) — proceed on 3.9 otherwise.
 5. Rotate the exposed Anthropic key and provide the new one via `.env` (not committed).
 
-## Next actions (Phase 3 — AI pipeline)
+## Next actions (Phase 4 — Media pipeline)
 
-See `IMPLEMENTATION_PLAN.md` → "PHASE 3". Provider abstraction + Anthropic
-adapter + topic generator (generate/score/dedupe) + research + script + script
-QA, all testable against stubs. Endpoint: `POST /api/channels/{id}/topics:generate`.
+See `IMPLEMENTATION_PLAN.md` → "PHASE 4". Voice (stub synthetic wav + ElevenLabs
++ OpenAI TTS), visuals (stub Pillow card + OpenAI images + Pexels stock),
+subtitles (SRT/VTT), deterministic timeline, FFmpeg renderer (`imageio-ffmpeg`),
+ffprobe validation. Endpoint: `POST /api/jobs/{id}/stages/render:run` → mp4.

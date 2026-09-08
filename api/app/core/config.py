@@ -45,7 +45,7 @@ class Settings(BaseSettings):
 
     # ---- AI keys ----
     anthropic_api_key: Optional[str] = None
-    model: str = "claude-sonnet-4-6"
+    model: str = "claude-sonnet-4-5"
     openai_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
 

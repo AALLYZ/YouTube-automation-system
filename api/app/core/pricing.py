@@ -16,7 +16,12 @@ class TokenPrice:
 
 # --- LLM token pricing (verify against provider pages) ---
 LLM_PRICING: dict[str, TokenPrice] = {
+    # Verify against https://www.anthropic.com/pricing and OpenAI pricing pages.
+    "claude-sonnet-4-5": TokenPrice(3.00, 15.00),
     "claude-sonnet-4-6": TokenPrice(3.00, 15.00),
+    "claude-sonnet-5": TokenPrice(3.00, 15.00),
+    "claude-opus-5": TokenPrice(15.00, 75.00),
+    "claude-haiku-4-5": TokenPrice(0.80, 4.00),
     "claude-3-5-sonnet": TokenPrice(3.00, 15.00),
     "claude-3-5-haiku": TokenPrice(0.80, 4.00),
     "gpt-4o": TokenPrice(2.50, 10.00),

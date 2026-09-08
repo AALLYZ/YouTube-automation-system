@@ -95,7 +95,14 @@ class AIProvider(abc.ABC):
         temperature: float = 0.7,
         max_tokens: int = 2000,
         json_mode: bool = False,
-    ) -> AIResult: ...
+        task: str = "",
+    ) -> AIResult:
+        """Return a completion.
+
+        `task` is a semantic hint (e.g. "topics", "script", "script_qa") that
+        real providers may ignore but stubs use to return the right shape.
+        """
+        ...
 
 
 class ResearchProvider(abc.ABC):
