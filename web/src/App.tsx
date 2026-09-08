@@ -12,6 +12,7 @@ import Notifications from "./pages/Notifications";
 import Logs from "./pages/Logs";
 import Settings from "./pages/Settings";
 import Setup from "./pages/Setup";
+import Users from "./pages/Users";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/logs" element={<Logs />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/users" element={<Users />} />
         <Route path="/setup" element={<Setup />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

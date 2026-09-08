@@ -47,3 +47,15 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AdminCreateUser(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    role: UserRole = UserRole.EDITOR
+
+
+class AdminUpdateUser(BaseModel):
+    role: UserRole | None = None
+    is_active: bool | None = None
+    password: str | None = Field(default=None, min_length=8, max_length=128)

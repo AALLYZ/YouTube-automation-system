@@ -2,7 +2,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { Icon, IconName } from "../lib/icons";
 
-const NAV: [string, string, IconName][] = [
+const NAV: [string, string, IconName, boolean?][] = [
   ["/", "Overview", "overview"],
   ["/automation", "Automation", "automation"],
   ["/topics", "Topics", "topics"],
@@ -12,6 +12,7 @@ const NAV: [string, string, IconName][] = [
   ["/notifications", "Notifications", "bell"],
   ["/logs", "Logs", "logs"],
   ["/settings", "Settings", "settings"],
+  ["/users", "Users", "users", true],
   ["/setup", "Setup Wizard", "wizard"],
 ];
 
@@ -33,7 +34,7 @@ export default function Layout() {
             <span className="text-sm font-bold tracking-tight text-white">YT Automation</span>
           </div>
           <nav className="flex flex-1 flex-col gap-1 px-3">
-            {NAV.map(([to, label, ic]) => {
+            {NAV.filter(([, , , adminOnly]) => !adminOnly || user?.role === "admin").map(([to, label, ic]) => {
               const I = Icon[ic];
               return (
                 <NavLink

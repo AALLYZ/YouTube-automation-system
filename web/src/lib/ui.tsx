@@ -30,10 +30,10 @@ const MUTE = "bg-slate-100 text-slate-500 ring-slate-200";
 
 const TONE: Record<string, string> = {
   COMPLETED: OK, SUCCEEDED: OK, ready: OK, uploaded: OK, published: OK,
-  sent: OK, delivered: OK, read: OK, connected: OK,
+  sent: OK, delivered: OK, read: OK, connected: OK, active: OK,
   RUNNING: RUN, uploading: RUN,
   QUEUED: MUTE, PENDING: MUTE, queued: MUTE, SKIPPED: MUTE, CANCELLED: MUTE, INFO: MUTE,
-  "not connected": MUTE, draft: MUTE, pending: MUTE,
+  "not connected": MUTE, draft: MUTE, pending: MUTE, disabled: MUTE,
   WAITING_APPROVAL: WARN, scheduled: WARN, WARNING: WARN,
   FAILED: BAD, failed: BAD, ERROR: BAD,
 };

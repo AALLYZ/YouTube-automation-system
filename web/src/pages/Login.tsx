@@ -112,6 +112,12 @@ export default function Login() {
               {notice}
             </div>
           )}
+          {mode === "register" && !canRegister && (
+            <div className="rounded-lg bg-amber-50 p-2.5 text-sm text-amber-800">
+              Sign-up is invite-only. Ask an administrator to enable open registration
+              (<code className="text-xs">AUTH_ALLOW_REGISTRATION=true</code>) or to create your account.
+            </div>
+          )}
 
           {mode !== "reset" && (
             <label className="block text-sm">
@@ -168,11 +174,9 @@ export default function Login() {
                 <button type="button" className="text-brand-600 hover:underline" onClick={() => go("forgot")}>
                   Forgot password?
                 </button>
-                {canRegister && (
-                  <button type="button" className="text-brand-600 hover:underline" onClick={() => go("register")}>
-                    Create an account
-                  </button>
-                )}
+                <button type="button" className="text-brand-600 hover:underline" onClick={() => go("register")}>
+                  Create an account
+                </button>
               </>
             ) : (
               <button type="button" className="text-slate-500 hover:underline" onClick={() => go("signin")}>
