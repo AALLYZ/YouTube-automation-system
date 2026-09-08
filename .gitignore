@@ -22,3 +22,8 @@ storage/**
 
 # OS
 .DS_Store
+
+# uv
+.python-version
+*.egg-info/
+api/.venv/

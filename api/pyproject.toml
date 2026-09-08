@@ -1,0 +1,49 @@
+[project]
+name = "ytauto-api"
+version = "0.1.0"
+description = "End-to-end YouTube content automation system"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<0.116",
+    "uvicorn[standard]>=0.34,<0.35",
+    "pydantic>=2.10,<3",
+    "email-validator>=2.2",
+    "pydantic-settings>=2.7,<3",
+    "sqlalchemy>=2.0.36,<2.1",
+    "alembic>=1.14,<2",
+    "psycopg[binary]>=3.2.4,<4",
+    "redis>=5.2,<6",
+    "rq>=2.0,<3",
+    "apscheduler>=3.11,<4",
+    "argon2-cffi>=23.1,<24",
+    "pyjwt>=2.10,<3",
+    "cryptography>=44,<45",
+    "python-multipart>=0.0.20",
+    "httpx>=0.28,<0.29",
+    "tenacity>=9,<10",
+    "python-dateutil>=2.9",
+    "anthropic>=0.42,<1",
+    "openai>=1.59,<2",
+    "imageio-ffmpeg>=0.5,<0.6",
+    "pillow>=11,<12",
+    "google-api-python-client>=2.150",
+    "google-auth-oauthlib>=1.2,<2",
+    "google-auth-httplib2>=0.2",
+    "twilio>=9.4,<10",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=0.25,<0.26",
+    "pytest-cov>=6,<7",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
