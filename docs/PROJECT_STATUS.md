@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-_Last updated: 2026-09-07 · Current phase: **Phase 3 complete → Phase 4 next**_
+_Last updated: 2026-09-07 · Current phase: **Phase 4 complete → Phase 5 next**_
 
 ## Legend
 ✅ done · 🔄 in progress · ⬜ not started · ⚠️ blocked
@@ -12,7 +12,7 @@ _Last updated: 2026-09-07 · Current phase: **Phase 3 complete → Phase 4 next*
 | 1 | Architecture & planning | ✅ | — (docs) |
 | 2 | Foundation (config, db, auth, storage) | ✅ | `GET /api/health`, `GET /api/channels` |
 | 3 | AI pipeline (topic, research, script, QA) | ✅ | `POST /api/channels/{id}/topics:generate`, `POST /api/channels/{id}/scripts:draft` |
-| 4 | Media pipeline (voice, visuals, subs, render) | ⬜ | `POST /api/jobs/{id}/stages/render:run` |
+| 4 | Media pipeline (voice, visuals, subs, render) | ✅ | `POST /api/jobs/{id}/media:run`, `GET /api/jobs/{id}/video` |
 | 5 | YouTube (OAuth, metadata, upload, thumbnail) | ⬜ | `GET /api/youtube/status` |
 | 6 | WhatsApp notifications | ⬜ | `POST /api/notifications/test` |
 | 7 | Controller / queue / scheduler | ⬜ | `POST /api/jobs`, `GET /api/jobs/{id}` |
@@ -93,6 +93,42 @@ make seed && make run` → http://localhost:8090 (`/docs` for OpenAPI).
 - **11 pytest tests green** (was 7). Verified live: topics scored+sorted,
   scripts:draft produces a 4-scene script + QA verdict + job cost.
 
+## Phase 4 — completed
+
+- **Voice**: `VoiceProvider` adapters — `StubVoice` (real WAV, quiet 120 Hz tone,
+  word timestamps), `ElevenLabsVoice` (`/with-timestamps`, char→word alignment),
+  `OpenAIVoice` (tts-1, proportional timing). `services/voice.py` synthesises the
+  full narration, derives per-scene segments by word weight, writes
+  `voiceover.*` + `timestamps.json`, updates `VideoScene.actual_duration_sec`.
+- **Visuals**: `ImageProvider` (`StubImage` Pillow gradient card, `OpenAIImage`
+  gpt-image-1), `StockMediaProvider` (`PexelsStock` photo/video download +
+  attribution, `StubStock`), `VideoClipProvider` (`StubVideoClip`).
+  `services/visuals.py` routes each scene by `visual_type`, stores one
+  `VisualAsset` per scene with `license` + `rights_verified` (generated/openai/
+  Pexels ⇒ verified); graceful fallback to a generated image when stock misses.
+- **Subtitles**: `services/subtitles.py` → SRT + VTT, ≤8-word cues spread across
+  each scene's time window.
+- **Timeline**: `services/timeline.py` → deterministic `timeline.json`
+  (resolution per aspect, fps 30, per-scene start/end/asset/transition/caption,
+  voice + optional ducked music). Refuses unverified assets unless
+  `allow_unverified_media`. Creates/updates `VideoProject`.
+- **Render**: `services/render.py` — single FFmpeg `filter_complex`: per-scene
+  scale/crop/fps/trim → `concat` → burned subtitles (`subtitles` filter) →
+  optional branding `drawtext` → voice (+ music `amix` with duck) → libx264
+  yuv420p + AAC + faststart, bounded by timeline duration. Auto-retries without
+  burned subs if libass fails. `ffprobe` JSON stored on `VideoProject`.
+- **FFmpeg**: switched `imageio-ffmpeg` → **`static-ffmpeg`** (bundles ffmpeg
+  *and* ffprobe, darwin_arm64 v8.0; resolves `FFMPEG_BINARY`/PATH first for
+  Docker). libx264 + aac confirmed.
+- `services/media.py` orchestrates voice→visuals→subtitles→timeline→render as
+  job steps (cost rolled into `job.total_cost_usd`); reused by Phase 7.
+- Routes: `GET /api/jobs`, `GET /api/jobs/{public_id}` (+ steps),
+  `POST /api/jobs/{public_id}/media:run`,
+  `POST /api/jobs/{public_id}/stages/{voice|visuals|subtitles|timeline|render}:run`,
+  `GET /api/jobs/{public_id}/timeline`, `GET /api/jobs/{public_id}/video`.
+- **13 pytest tests green** (was 11). Verified live: full offline pipeline builds
+  a 1920×1080 H.264+AAC mp4 with burned captions + branding in ~6 s.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
@@ -101,9 +137,10 @@ make seed && make run` → http://localhost:8090 (`/docs` for OpenAPI).
 4. **Python 3.11 install** on this machine (recommended) — proceed on 3.9 otherwise.
 5. Rotate the exposed Anthropic key and provide the new one via `.env` (not committed).
 
-## Next actions (Phase 4 — Media pipeline)
+## Next actions (Phase 5 — YouTube)
 
-See `IMPLEMENTATION_PLAN.md` → "PHASE 4". Voice (stub synthetic wav + ElevenLabs
-+ OpenAI TTS), visuals (stub Pillow card + OpenAI images + Pexels stock),
-subtitles (SRT/VTT), deterministic timeline, FFmpeg renderer (`imageio-ffmpeg`),
-ffprobe validation. Endpoint: `POST /api/jobs/{id}/stages/render:run` → mp4.
+See `IMPLEMENTATION_PLAN.md` → "PHASE 5". Google OAuth (start/callback, token
+encrypt + refresh), `services/metadata.py` (scored titles, description, tags,
+chapters), `services/thumbnail.py` (concepts→images→score→select), `YouTubeProvider`
+`google` (resumable upload, thumbnail, playlist, privacy, scheduled publish) +
+`stub`, quota tracking. Endpoint: `GET /api/youtube/status`, `POST .../upload:run`.

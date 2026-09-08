@@ -9,7 +9,15 @@ from functools import lru_cache
 
 from app.core.config import settings
 from app.core.errors import AppError, ErrorCode
-from app.providers.base import AIProvider, ResearchProvider, StorageProvider
+from app.providers.base import (
+    AIProvider,
+    ImageProvider,
+    ResearchProvider,
+    StockMediaProvider,
+    StorageProvider,
+    VideoClipProvider,
+    VoiceProvider,
+)
 
 
 @lru_cache
@@ -55,6 +63,59 @@ def get_research() -> ResearchProvider:
     raise AppError(f"Unknown RESEARCH_PROVIDER: {p}", code=ErrorCode.CONFIG)
 
 
+@lru_cache
+def get_voice() -> VoiceProvider:
+    p = settings.voice_provider
+    if p == "elevenlabs":
+        from app.providers.voice.elevenlabs import ElevenLabsVoice
+
+        return ElevenLabsVoice()
+    if p == "openai":
+        from app.providers.voice.openai import OpenAIVoice
+
+        return OpenAIVoice()
+    if p in ("local", "stub"):
+        from app.providers.voice.stub import StubVoice
+
+        return StubVoice()
+    raise AppError(f"Unknown VOICE_PROVIDER: {p}", code=ErrorCode.CONFIG)
+
+
+@lru_cache
+def get_image() -> ImageProvider:
+    p = settings.image_provider
+    if p == "openai":
+        from app.providers.image.openai import OpenAIImage
+
+        return OpenAIImage()
+    if p == "stub":
+        from app.providers.image.stub import StubImage
+
+        return StubImage()
+    raise AppError(f"Unknown IMAGE_PROVIDER: {p}", code=ErrorCode.CONFIG)
+
+
+@lru_cache
+def get_stock() -> StockMediaProvider:
+    p = settings.stock_provider
+    if p == "pexels":
+        from app.providers.stock.pexels import PexelsStock
+
+        return PexelsStock()
+    if p == "stub":
+        from app.providers.stock.stub import StubStock
+
+        return StubStock()
+    raise AppError(f"Unknown STOCK_PROVIDER: {p}", code=ErrorCode.CONFIG)
+
+
+@lru_cache
+def get_video_clip() -> VideoClipProvider:
+    from app.providers.video_clip.stub import StubVideoClip
+
+    return StubVideoClip()
+
+
 def reset_providers() -> None:
-    for fn in (get_storage, get_ai, get_research):
+    for fn in (get_storage, get_ai, get_research, get_voice, get_image, get_stock, get_video_clip):
         fn.cache_clear()
