@@ -17,6 +17,7 @@ from app.providers.base import (
     StorageProvider,
     VideoClipProvider,
     VoiceProvider,
+    YouTubeProvider,
 )
 
 
@@ -116,6 +117,23 @@ def get_video_clip() -> VideoClipProvider:
     return StubVideoClip()
 
 
+@lru_cache
+def get_youtube() -> YouTubeProvider:
+    p = settings.youtube_provider
+    if p == "google":
+        from app.providers.youtube.google import GoogleYouTube
+
+        return GoogleYouTube()
+    if p == "stub":
+        from app.providers.youtube.stub import StubYouTube
+
+        return StubYouTube()
+    raise AppError(f"Unknown YOUTUBE_PROVIDER: {p}", code=ErrorCode.CONFIG)
+
+
 def reset_providers() -> None:
-    for fn in (get_storage, get_ai, get_research, get_voice, get_image, get_stock, get_video_clip):
+    for fn in (
+        get_storage, get_ai, get_research, get_voice, get_image, get_stock,
+        get_video_clip, get_youtube,
+    ):
         fn.cache_clear()

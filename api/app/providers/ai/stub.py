@@ -65,6 +65,10 @@ class StubAI(AIProvider):
             return json.dumps(self._script(s, subject, prompt))
         if task == "script_qa":
             return json.dumps(self._qa(s, prompt))
+        if task == "youtube_metadata":
+            return json.dumps(self._metadata(s, subject))
+        if task == "thumbnail_concepts":
+            return json.dumps(self._thumbnails(s, subject))
         # generic
         return f"Stub response about {subject}."
 
@@ -149,6 +153,68 @@ class StubAI(AIProvider):
             "full_text": f"{subject}. " + " ".join(full),
             "scenes": scenes,
         }
+
+    def _metadata(self, s: int, subject: str) -> dict:
+        sub = subject.title()
+        titles = [
+            f"The {_ADJ[s % len(_ADJ)]} Truth About {sub}",
+            f"{sub}: What Nobody Tells You",
+            f"Why {sub} Matters More Than You Think",
+            f"{sub} Explained in Plain English",
+            f"I Studied {sub} So You Don't Have To",
+        ]
+        title_options = [
+            {
+                "title": t,
+                "reason": "curiosity gap + clarity" if i == 0 else "alternative framing",
+                "score": 90 - i * 6 - (s + i) % 5,
+            }
+            for i, t in enumerate(titles)
+        ]
+        tags = [
+            subject.lower(), f"{subject.lower()} explained", "documentary", "education",
+            "how it works", "history", "science", f"learn {subject.lower()}",
+        ]
+        return {
+            "titles": title_options,
+            "description": (
+                f"A clear, fast-paced breakdown of {subject}. We cover where it came "
+                f"from, how it actually works, and why most explanations get it wrong.\n\n"
+                f"Chapters are listed below. Subscribe for more."
+            ),
+            "tags": tags,
+            "hashtags": [
+                "#" + (
+                    [w for w in re.findall(r"[A-Za-z]{3,}", subject.lower())
+                     if w not in {"the", "and", "of", "for", "why", "how"}] or ["topic"]
+                )[-1],
+                "#explained",
+                "#learnwithme",
+            ],
+            "category_id": "27",
+            "chapter_titles": [
+                "Introduction", "The origin", "How it works", "The common myth",
+                "What changed", "How to think about it", "Where it leads", "Recap",
+            ],
+        }
+
+    def _thumbnails(self, s: int, subject: str) -> dict:
+        emotions = ["curiosity", "surprise", "intrigue", "urgency"]
+        concepts = []
+        for i in range(3):
+            concepts.append(
+                {
+                    "concept": f"Bold close-up representing {subject}, concept {i + 1}",
+                    "text": [f"{subject.split()[0].upper()}?", "THE TRUTH", "WATCH THIS"][i % 3],
+                    "composition": "subject left third, high contrast, bright rim light, negative space right for text",
+                    "target_emotion": emotions[(s + i) % len(emotions)],
+                    "image_prompt": (
+                        f"high-contrast editorial thumbnail illustration about {subject}, "
+                        f"dramatic lighting, bold focal point, minimal background, concept {i + 1}"
+                    ),
+                }
+            )
+        return {"concepts": concepts}
 
     def _qa(self, s: int, prompt: str) -> dict:
         # Fail the first pass ~1/4 of the time so the revision loop is exercised.

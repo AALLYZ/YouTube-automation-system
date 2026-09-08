@@ -36,7 +36,7 @@ def create_app() -> FastAPI:
     async def _app_error_handler(_: Request, exc: AppError) -> JSONResponse:
         return JSONResponse(status_code=exc.http_status, content=exc.to_dict())
 
-    from app.api.routes import auth, channels, health, jobs, scripts, storage, topics
+    from app.api.routes import auth, channels, health, jobs, scripts, storage, topics, youtube
 
     app.include_router(health.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
     app.include_router(scripts.router, prefix="/api")
     app.include_router(jobs.router, prefix="/api")
     app.include_router(storage.router, prefix="/api")
+    app.include_router(youtube.router, prefix="/api")
 
     @app.get("/")
     def root() -> dict:

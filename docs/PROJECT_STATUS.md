@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-_Last updated: 2026-09-07 · Current phase: **Phase 4 complete → Phase 5 next**_
+_Last updated: 2026-09-07 · Current phase: **Phase 5 complete → Phase 6 next**_
 
 ## Legend
 ✅ done · 🔄 in progress · ⬜ not started · ⚠️ blocked
@@ -13,7 +13,7 @@ _Last updated: 2026-09-07 · Current phase: **Phase 4 complete → Phase 5 next*
 | 2 | Foundation (config, db, auth, storage) | ✅ | `GET /api/health`, `GET /api/channels` |
 | 3 | AI pipeline (topic, research, script, QA) | ✅ | `POST /api/channels/{id}/topics:generate`, `POST /api/channels/{id}/scripts:draft` |
 | 4 | Media pipeline (voice, visuals, subs, render) | ✅ | `POST /api/jobs/{id}/media:run`, `GET /api/jobs/{id}/video` |
-| 5 | YouTube (OAuth, metadata, upload, thumbnail) | ⬜ | `GET /api/youtube/status` |
+| 5 | YouTube (OAuth, metadata, upload, thumbnail) | ✅ | `GET /api/youtube/status`, `POST /api/jobs/{id}/publish:run` |
 | 6 | WhatsApp notifications | ⬜ | `POST /api/notifications/test` |
 | 7 | Controller / queue / scheduler | ⬜ | `POST /api/jobs`, `GET /api/jobs/{id}` |
 | 8 | Admin dashboard | ⬜ | dashboard at `/` |
@@ -129,6 +129,54 @@ make seed && make run` → http://localhost:8090 (`/docs` for OpenAPI).
 - **13 pytest tests green** (was 11). Verified live: full offline pipeline builds
   a 1920×1080 H.264+AAC mp4 with burned captions + branding in ~6 s.
 
+## Phase 5 — completed
+
+- **OAuth** (`services/youtube_oauth.py`): Google web flow via `google-auth-oauthlib`.
+  `GET /api/youtube/oauth/start?channel_id=` returns the consent URL + a signed
+  state token (HS256, carries `channel_id`, 12 h TTL — CSRF-safe, no session
+  store). `GET /api/youtube/oauth/callback` (unauthenticated; state is the proof)
+  exchanges the code, reads the channel identity via `channels.list(mine=true)`,
+  and stores access + refresh tokens **Fernet-encrypted** on `youtube_credentials`.
+  `credential_dict()` auto-refreshes an access token that is within 2 min of
+  expiry and re-persists it. Scopes: `youtube.upload`, `youtube.force-ssl`,
+  `youtube.readonly`. `POST /api/youtube/disconnect` deletes the credential.
+- **Metadata** (`services/metadata.py`): one LLM call (`task="youtube_metadata"`)
+  → 5 CTR-scored title options (best one becomes `youtube_uploads.title`),
+  description, cleaned tags (≤15, ≤60 chars, deduped), hashtags, validated
+  `category_id`. Chapters are derived from scene durations (needs ≥3 scenes,
+  first at 0:00, ≥10 s apart) and rendered into the description as timestamps.
+- **Thumbnail** (`services/thumbnail.py`): LLM concepts (`task="thumbnail_concepts"`)
+  → an image per concept via the image provider (1280×720) → deterministic score
+  (punchy ≤4-word text, strong emotion, compositional keywords) → best is
+  `selected` and linked from `video_projects.thumbnail_id`.
+- **Provider** (`providers/youtube/`): `YouTubeProvider` interface gained
+  `add_to_playlist`. `GoogleYouTube` — resumable `videos.insert`, `thumbnails.set`,
+  `playlistItems.insert`, scheduled publish via `status.publishAt` (+forces
+  `privacyStatus=private`), `HttpError` → typed `AppError`. `StubYouTube` — fakes
+  a `stub…` video id so the stage runs offline. `registry.get_youtube()`.
+- **Quota** (`services/upload.py`): every YouTube call writes an `api_usage` row
+  with `provider="youtube"` + `units` (insert 1600 / thumb 50 / playlist 50).
+  `check_quota()` sums today's units and refuses to start an upload that would
+  cross `YT_DAILY_QUOTA_UNITS` (`QUOTA_EXCEEDED`, non-retryable).
+- **Safety**: `test_run` jobs (and `YOUTUBE_PROVIDER=stub`) always route through
+  `StubYouTube` — test mode can never publish to a real account.
+- `services/publish.py` orchestrates thumbnail→metadata→upload as job steps
+  (`Stage.THUMBNAIL/METADATA/UPLOAD`), cost rolled into `job.total_cost_usd`.
+- Routes: `GET /api/youtube/status`, `GET /api/youtube/oauth/start`,
+  `GET /api/youtube/oauth/callback`, `POST /api/youtube/disconnect`,
+  `POST /api/jobs/{id}/publish:run`,
+  `POST /api/jobs/{id}/stages/{thumbnail|metadata|upload}:run`,
+  `GET /api/jobs/{id}/upload`.
+- **20 pytest tests green** (was 13). Verified live: offline pipeline drafts →
+  renders → publishes a `stub…` video with scored title, 8 tags, 3 chapters,
+  selected thumbnail, 1650 quota units recorded.
+
+To connect a real channel: create an OAuth 2.0 **Web application** client in
+Google Cloud (YouTube Data API v3 enabled), add
+`http://localhost:3000/api/youtube/oauth/callback` as an authorized redirect,
+keep the app in "Testing" with the channel owner as a test user, then set
+`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and `YOUTUBE_PROVIDER=google`.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
@@ -137,10 +185,10 @@ make seed && make run` → http://localhost:8090 (`/docs` for OpenAPI).
 4. **Python 3.11 install** on this machine (recommended) — proceed on 3.9 otherwise.
 5. Rotate the exposed Anthropic key and provide the new one via `.env` (not committed).
 
-## Next actions (Phase 5 — YouTube)
+## Next actions (Phase 6 — WhatsApp)
 
-See `IMPLEMENTATION_PLAN.md` → "PHASE 5". Google OAuth (start/callback, token
-encrypt + refresh), `services/metadata.py` (scored titles, description, tags,
-chapters), `services/thumbnail.py` (concepts→images→score→select), `YouTubeProvider`
-`google` (resumable upload, thumbnail, playlist, privacy, scheduled publish) +
-`stub`, quota tracking. Endpoint: `GET /api/youtube/status`, `POST .../upload:run`.
+See `IMPLEMENTATION_PLAN.md` → "PHASE 6". `NotifierProvider` adapters
+(`console`, `twilio`, `meta_cloud`, `stub`), 4 templates (job_started,
+video_ready, published, error) with per-channel preferences + `notifications`
+dedup, inbound webhook `POST /api/webhooks/twilio` (signature verify) → delivery
+status. Endpoint: `POST /api/notifications/test`, `GET /api/notifications`.

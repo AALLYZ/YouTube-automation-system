@@ -229,14 +229,15 @@ phase (the "endpoint after every phase" requirement).
 - [ ] `pytest`: render a 10s video from stubs, assert playable + duration
 - **Endpoint:** `POST /api/jobs/{id}/stages/render:run` (test), returns mp4 key + `GET .../video` streams it
 
-### PHASE 5 — YouTube
-- [ ] Google OAuth: `GET /api/youtube/oauth/start`, `.../callback`, token encrypt/refresh
-- [ ] `services/metadata.py` (titles scored, description, tags, chapters)
-- [ ] YouTubeProvider `google`: resumable upload, thumbnail set, playlist, privacy, scheduled publish
-- [ ] `services/thumbnail.py` (concepts → images → score → select)
-- [ ] quota tracking + guard
-- [ ] `pytest`: metadata gen (stub AI), uploader against `stub`, OAuth state/PKCE
-- **Endpoint:** `GET /api/youtube/status`, `POST /api/jobs/{id}/stages/upload:run` (stub)
+### PHASE 5 — YouTube ✅
+- [x] Google OAuth: `GET /api/youtube/oauth/start`, `.../callback`, signed state, token encrypt/refresh
+- [x] `services/metadata.py` (titles scored, description, tags, hashtags, chapters from scene timings)
+- [x] YouTubeProvider `google`: resumable upload, thumbnail set, playlist, privacy, scheduled publish + `stub`
+- [x] `services/thumbnail.py` (concepts → images → deterministic score → select)
+- [x] quota tracking + guard (`api_usage` units, `YT_DAILY_QUOTA_UNITS`, `QUOTA_EXCEEDED`)
+- [x] `services/publish.py` orchestration (thumbnail→metadata→upload job steps)
+- [x] `pytest` (20 total): publish pipeline vs stub, metadata/thumbnail shape, OAuth state roundtrip, quota guard, status endpoint
+- **Endpoint:** `GET /api/youtube/status`, `POST /api/jobs/{id}/publish:run`, `POST /api/jobs/{id}/stages/{thumbnail|metadata|upload}:run`, `GET /api/jobs/{id}/upload`
 
 ### PHASE 6 — WhatsApp
 - [ ] NotifierProvider: `console`, `twilio`, `meta_cloud`, `stub`

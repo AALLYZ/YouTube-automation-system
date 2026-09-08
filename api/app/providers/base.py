@@ -191,6 +191,12 @@ class YouTubeProvider(abc.ABC):
     @abc.abstractmethod
     def set_thumbnail(self, *, video_id: str, image_path: str, credential: Optional[dict[str, Any]] = None) -> int: ...
 
+    def add_to_playlist(
+        self, *, video_id: str, playlist_id: str, credential: Optional[dict[str, Any]] = None
+    ) -> int:
+        """Add an uploaded video to a playlist. Returns quota units consumed."""
+        return 0
+
 
 class NotifierProvider(abc.ABC):
     name: str = "base"
