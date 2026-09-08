@@ -20,6 +20,7 @@ from app.models.channel import Channel
 from app.models.content import Research, Script, Topic
 from app.models.job import Job, JobStep
 from app.models.ops import ApiUsage
+from app.services.events import record_event
 from app.services.final_qa import run_final_qa
 from app.services.jobs import fail_step, finish_step, start_step
 from app.services.media import _script_for_job
@@ -345,6 +346,8 @@ def run_pipeline(
                 _once, max_attempts=settings.max_stage_retries, base_sec=base, sleep=sleep_fn
             )
         except _Paused:
+            record_event(db, level="INFO", event="job.waiting_approval", job_id=job.id,
+                         stage=Stage.APPROVAL_GATE.value, message="Awaiting approval before upload")
             db.commit()
             log.info("pipeline paused for approval: job %s", job.public_id)
             return job
@@ -356,6 +359,9 @@ def run_pipeline(
             _notify(db, job, channel, NotificationEvent.ERROR, {
                 "stage": stage.value, "error_code": exc.code, "error_message": exc.message,
             })
+            record_event(db, level="ERROR", event=f"stage.{stage.value.lower()}.failed", job_id=job.id,
+                         stage=stage.value, message=f"{exc.code}: {exc.message}",
+                         context=getattr(exc, "context", None))
             db.commit()
             log.warning("pipeline failed at %s for job %s: %s", stage.value, job.public_id, exc.message)
             return job
@@ -364,7 +370,10 @@ def run_pipeline(
         job.current_stage = stage
         job.progress_pct = int((idx + 1) / total * 100)
         job.total_cost_usd = _job_cost(db, job.id)
+        record_event(db, level="INFO", event=f"stage.{stage.value.lower()}", job_id=job.id, stage=stage.value)
         db.commit()
 
+    record_event(db, level="INFO", event="job.completed", job_id=job.id,
+                 message=f"{job.total_cost_usd:.4f} USD")
     log.info("pipeline complete: job %s (%.4f USD)", job.public_id, job.total_cost_usd)
     return job

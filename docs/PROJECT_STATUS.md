@@ -1,6 +1,6 @@
 # PROJECT STATUS
 
-_Last updated: 2026-09-07 · Current phase: **Phase 7 complete → Phase 8 next**_
+_Last updated: 2026-09-07 · Current phase: **Phase 8 complete → Phase 9 next**_
 
 ## Legend
 ✅ done · 🔄 in progress · ⬜ not started · ⚠️ blocked
@@ -16,7 +16,7 @@ _Last updated: 2026-09-07 · Current phase: **Phase 7 complete → Phase 8 next*
 | 5 | YouTube (OAuth, metadata, upload, thumbnail) | ✅ | `GET /api/youtube/status`, `POST /api/jobs/{id}/publish:run` |
 | 6 | WhatsApp notifications | ✅ | `POST /api/notifications/test`, `GET /api/notifications` |
 | 7 | Controller / queue / scheduler | ✅ | `POST /api/jobs`, `POST /api/jobs/{id}:approve\|:retry\|:cancel`, `POST /api/scheduler/run` |
-| 8 | Admin dashboard | ⬜ | dashboard at `/` |
+| 8 | Admin dashboard | ✅ | dashboard at `/`, `GET /api/overview` |
 | 9 | Testing & test mode | ⬜ | `GET /api/health/deep` |
 | 10 | Production / deploy / security | ⬜ | full system on `PUBLIC_HOST` |
 
@@ -246,6 +246,33 @@ keep the app in "Testing" with the channel owner as a test user, then set
   recovery (fail·fail·pass), non-retryable fail → `:retry` recovers, scheduler
   dedup + daily-limit accounting. Verified live via `POST /api/jobs`.
 
+## Phase 8 — completed
+
+- **Backend**: `GET /api/overview` (channels/jobs-by-status/recent jobs/cost
+  today+all-time/YT quota/videos/notifications/providers/automation flags),
+  `GET /api/logs` (+ filters) reading `system_logs`, `GET /api/usage`
+  (`api_usage` joined to job public ids). `services/events.record_event()`
+  writes `system_logs` rows; the pipeline now logs `stage.*`, `job.completed`,
+  `job.waiting_approval`, `stage.*.failed`.
+- **Static serving** (`app/web.py`): FastAPI mounts `web/dist` at `/` with a
+  SPA fallback (`SPAStaticFiles` → `index.html` for unknown non-`/api` paths).
+  No build present ⇒ `/` returns a JSON pointer, API unaffected.
+- **Dashboard** (`web/`): React 18 + Vite 6 + TS + Tailwind 3 SPA. JWT auth in
+  `localStorage`, typed `api` client, sidebar layout. Pages: **Overview**
+  (stat cards + recent jobs + providers), **Automation** (create job with
+  mode/test-run, approve/reject/retry/cancel, run scheduler tick),
+  **Topics** (generate/approve/reject), **Scripts** (draft from topic, scene
+  view), **Videos** (authed blob playback per job), **YouTube** (OAuth
+  connect/disconnect, quota), **Notifications** (send test, delivery table),
+  **Logs** (events + API-usage tabs), **Settings** (channel core fields +
+  9 JSON config blobs), **Setup Wizard** (11-step readiness checklist driven by
+  live provider/connection state).
+- Build: `make web` (from `api/`) or `cd web && npm run build`; dev proxy via
+  `npm run dev` (`/api` → `:8090`).
+- **45 pytest tests green** (was 41): overview auth + shape, logs/usage after a
+  real pipeline run, SPA root + deep-link fallback. Verified live in a browser:
+  login → every page renders against the running API.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
@@ -254,10 +281,9 @@ keep the app in "Testing" with the channel owner as a test user, then set
 4. **Python 3.11 install** on this machine (recommended) — proceed on 3.9 otherwise.
 5. Rotate the exposed Anthropic key and provide the new one via `.env` (not committed).
 
-## Next actions (Phase 8 — Dashboard)
+## Next actions (Phase 9 — Testing & test mode)
 
-See `IMPLEMENTATION_PLAN.md` → "PHASE 8". Vite + React + TS + Tailwind SPA
-(auth, API client, layout), pages: Overview, Automation, Topics, Scripts,
-Videos, YouTube, Notifications, Logs, Settings (AI panel), Setup Wizard,
-Test-Mode toggle; served as a static build from FastAPI at `/`. New endpoint:
-`GET /api/overview` stats.
+See `IMPLEMENTATION_PLAN.md` → "PHASE 9". Broaden unit + integration + pipeline
++ failure-injection coverage toward ~70%; verify TEST mode end to end; add
+fixtures/seed helpers and a CI workflow. New endpoint: `GET /api/health/deep`
+(all providers self-check).

@@ -1,7 +1,7 @@
 VENV := .venv/bin
 PORT ?= 8090
 
-.PHONY: install migrate seed run worker test fmt
+.PHONY: install migrate seed run worker test fmt web web-dev
 
 install:
 	uv venv --python 3.12 .venv
@@ -24,3 +24,11 @@ worker:
 
 test:
 	$(VENV)/python -m pytest -q
+
+# Build the dashboard into web/dist (served by FastAPI at /)
+web:
+	cd ../web && npm install && npm run build
+
+# Run the dashboard dev server (proxies /api -> :8090)
+web-dev:
+	cd ../web && npm run dev

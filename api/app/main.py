@@ -50,7 +50,9 @@ def create_app() -> FastAPI:
         channels,
         health,
         jobs,
+        logs,
         notifications,
+        overview,
         scheduler,
         scripts,
         storage,
@@ -59,22 +61,15 @@ def create_app() -> FastAPI:
         youtube,
     )
 
-    app.include_router(health.router, prefix="/api")
-    app.include_router(auth.router, prefix="/api")
-    app.include_router(channels.router, prefix="/api")
-    app.include_router(topics.router, prefix="/api")
-    app.include_router(scripts.router, prefix="/api")
-    app.include_router(jobs.router, prefix="/api")
-    app.include_router(storage.router, prefix="/api")
-    app.include_router(youtube.router, prefix="/api")
-    app.include_router(notifications.router, prefix="/api")
-    app.include_router(webhooks.router, prefix="/api")
-    app.include_router(scheduler.router, prefix="/api")
+    for r in (
+        health, auth, channels, topics, scripts, jobs, storage, youtube,
+        notifications, webhooks, scheduler, overview, logs,
+    ):
+        app.include_router(r.router, prefix="/api")
 
-    @app.get("/")
-    def root() -> dict:
-        return {"service": "youtube-automation", "docs": "/docs", "health": "/api/health"}
+    from app.web import mount_dashboard
 
+    mount_dashboard(app)
     return app
 
 

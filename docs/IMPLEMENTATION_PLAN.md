@@ -257,10 +257,12 @@ phase (the "endpoint after every phase" requirement).
 - [x] `pytest` (41 total): full AUTO pipeline → mp4 + upload, approval pause/resume, resume-after-draft, retryable recovery, non-retryable + `:retry`, scheduler dedup/limit
 - **Endpoint:** `POST /api/jobs`, `POST /api/jobs/{id}:run|:approve|:reject|:retry|:cancel`, `POST /api/scheduler/run`
 
-### PHASE 8 — Dashboard
-- [ ] Vite app, auth, API client, layout
-- [ ] Overview, Automation, Topics, Scripts, Videos, YouTube, Notifications, Logs, Settings (AI panel), Setup Wizard (11 steps + connection status), Test Mode toggle
-- [ ] served as static build from FastAPI at `/`
+### PHASE 8 — Dashboard ✅
+- [x] Vite + React + TS + Tailwind app, JWT auth, typed API client, sidebar layout
+- [x] Overview, Automation, Topics, Scripts, Videos, YouTube, Notifications, Logs, Settings (AI/provider JSON panel), Setup Wizard (11-step live checklist), test-run toggle on job create
+- [x] served as static build from FastAPI at `/` (`app/web.py`, SPA fallback); `make web`
+- [x] `GET /api/overview`, `GET /api/logs`, `GET /api/usage`; `services/events` -> `system_logs`
+- [x] `pytest` (45 total) + live browser walkthrough
 - **Endpoint:** dashboard at `/`, `GET /api/overview` stats
 
 ### PHASE 9 — Testing
