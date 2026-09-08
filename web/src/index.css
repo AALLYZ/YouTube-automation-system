@@ -3,36 +3,87 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --grid: rgba(99, 102, 241, 0.07);
+  }
   body {
-    @apply bg-slate-50 text-slate-800 antialiased;
+    @apply text-slate-800 antialiased;
+    background-color: #f6f7fb;
+    background-image:
+      radial-gradient(60rem 60rem at 110% -10%, rgba(129, 140, 248, 0.18), transparent 60%),
+      radial-gradient(50rem 50rem at -10% 110%, rgba(236, 72, 153, 0.12), transparent 55%),
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: auto, auto, 34px 34px, 34px 34px;
+    background-attachment: fixed;
+  }
+  ::selection {
+    background: rgba(99, 102, 241, 0.25);
   }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium
-           transition disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm
+           font-medium transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+    @apply btn text-white shadow-sm shadow-brand-600/30
+           bg-gradient-to-b from-brand-500 to-brand-600
+           hover:from-brand-500 hover:to-brand-700 hover:shadow-md hover:shadow-brand-600/40
+           active:translate-y-px;
   }
   .btn-ghost {
-    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-100;
+    @apply btn border border-slate-200 bg-white/80 text-slate-700 backdrop-blur
+           hover:bg-white hover:border-slate-300 hover:shadow-sm active:translate-y-px;
   }
   .card {
-    @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm;
+    @apply rounded-2xl border border-white/70 bg-white/80 p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.12)]
+           backdrop-blur-sm;
+  }
+  .card-flush {
+    @apply rounded-2xl border border-white/70 bg-white/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.12)]
+           backdrop-blur-sm overflow-hidden;
   }
   .input {
-    @apply w-full rounded-md border border-slate-300 px-3 py-2 text-sm
-           focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800
+           shadow-sm transition
+           focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30;
   }
   .th {
-    @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+    @apply px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400;
   }
   .td {
-    @apply px-3 py-2 text-sm text-slate-700 border-t border-slate-100;
+    @apply px-4 py-2.5 text-sm text-slate-700 border-t border-slate-100;
+  }
+  tbody tr {
+    @apply transition-colors hover:bg-brand-50/40;
   }
   .badge {
-    @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold
+           ring-1 ring-inset;
+  }
+  .section-title {
+    @apply text-sm font-semibold text-slate-700;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-600 via-violet-600 to-fuchsia-600 bg-clip-text text-transparent;
+  }
+  @keyframes grow-bar {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  .animate-bar {
+    transform-origin: left;
+    animation: grow-bar 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes dash-in {
+    from { stroke-dashoffset: var(--circ); }
+  }
+  .animate-ring {
+    animation: dash-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }

@@ -27,9 +27,7 @@ export default function Notifications() {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Notifications</h1>
-      {err && <ErrorBox msg={err} />}
+    <div className="space-y-4">      {err && <ErrorBox msg={err} />}
 
       <div className="card flex flex-wrap items-end gap-3">
         <div>

@@ -91,9 +91,7 @@ export default function Setup() {
   ];
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Setup Wizard</h1>
-      <p className="text-sm text-slate-500">
+    <div className="space-y-4">      <p className="text-sm text-slate-500">
         The pipeline runs fully offline on stub providers. Swap in real providers via environment
         variables, then reconnect below.
       </p>

@@ -54,9 +54,7 @@ export default function Videos() {
   const withVideo = jobs.data!.filter((j) => HAS_VIDEO.includes(j.current_stage));
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Videos</h1>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-4">      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {withVideo.map((j) => (
           <VideoCard key={j.public_id} job={j} />
         ))}

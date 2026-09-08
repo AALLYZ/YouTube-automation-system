@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ytauto-api",
+      "runtimeExecutable": "api/.venv/bin/uvicorn",
+      "runtimeArgs": ["app.main:app", "--port", "8090", "--app-dir", "api"],
+      "port": 8090
+    }
+  ]
+}

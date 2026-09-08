@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import { StageStrip } from "../lib/charts";
 import { ChannelSelect, useChannels } from "../lib/channels";
 import { Badge, ErrorBox, Spinner, ago, money, useAsync } from "../lib/ui";
 
@@ -29,11 +30,10 @@ export default function Automation() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Automation</h1>
       {err && <ErrorBox msg={err} />}
 
       <div className="card space-y-3">
-        <h2 className="font-semibold">Start a job</h2>
+        <h2 className="section-title">Start a job</h2>
         <div className="flex flex-wrap items-end gap-3">
           <div>
             <div className="mb-1 text-xs font-medium text-slate-500">Channel</div>
@@ -102,27 +102,31 @@ export default function Automation() {
               <thead>
                 <tr>
                   <th className="th">Job</th>
-                  <th className="th">Ch</th>
                   <th className="th">Status</th>
-                  <th className="th">Stage</th>
-                  <th className="th">%</th>
+                  <th className="th w-[32%]">Pipeline</th>
                   <th className="th">Cost</th>
                   <th className="th">Created</th>
                   <th className="th">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {jobs.data!.map((j) => (
+                {jobs.data!.map((j) => {
+                  const steps = Object.fromEntries((j.steps || []).map((x: any) => [x.stage, x.status]));
+                  return (
                   <tr key={j.public_id}>
-                    <td className="td font-mono text-xs">{j.public_id}</td>
-                    <td className="td">{j.channel_id}</td>
-                    <td className="td">
-                      <Badge value={j.status} />
+                    <td className="td font-mono text-xs">
+                      {j.public_id}
+                      {j.test_run && <span className="ml-1 rounded bg-slate-100 px-1 text-[10px] text-slate-400">test</span>}
                     </td>
-                    <td className="td">{j.current_stage}</td>
-                    <td className="td">{j.progress_pct}</td>
-                    <td className="td">{money(j.total_cost_usd)}</td>
-                    <td className="td">{ago(j.started_at || j.created_at)}</td>
+                    <td className="td">
+                      <Badge value={j.status} dot />
+                    </td>
+                    <td className="td">
+                      <StageStrip steps={steps} current={j.current_stage} status={j.status} />
+                      <div className="mt-1 text-[11px] text-slate-400">{j.current_stage} · {j.progress_pct}%</div>
+                    </td>
+                    <td className="td tabular-nums">{money(j.total_cost_usd)}</td>
+                    <td className="td text-slate-500">{ago(j.started_at || j.created_at)}</td>
                     <td className="td">
                       <div className="flex gap-1">
                         {j.status === "WAITING_APPROVAL" && (
@@ -160,7 +164,8 @@ export default function Automation() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

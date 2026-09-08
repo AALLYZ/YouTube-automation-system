@@ -9,9 +9,7 @@ export default function Logs() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Logs</h1>
-        <div className="flex gap-1">
+      <div className="flex items-center justify-between">        <div className="flex gap-1">
           <button
             className={tab === "events" ? "btn-primary" : "btn-ghost"}
             onClick={() => setTab("events")}

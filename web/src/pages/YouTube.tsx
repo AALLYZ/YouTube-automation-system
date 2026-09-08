@@ -41,10 +41,7 @@ export default function YouTube() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">YouTube</h1>
-        <ChannelSelect channels={channels} selected={selected} onChange={choose} />
-      </div>
+      <ChannelSelect channels={channels} selected={selected} onChange={choose} />
       {err && <ErrorBox msg={err} />}
 
       {status.loading ? (

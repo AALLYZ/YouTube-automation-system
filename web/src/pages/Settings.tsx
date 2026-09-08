@@ -68,10 +68,7 @@ export default function Settings() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Settings</h1>
-        <ChannelSelect channels={channels} selected={selected} onChange={choose} />
-      </div>
+      <ChannelSelect channels={channels} selected={selected} onChange={choose} />
       {err && <ErrorBox msg={err} />}
       {msg && <div className="rounded bg-green-50 p-2 text-sm text-green-700">{msg}</div>}
 

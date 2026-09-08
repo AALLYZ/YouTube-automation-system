@@ -28,9 +28,7 @@ export default function Topics() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Topics</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between">        <div className="flex items-center gap-2">
           <ChannelSelect channels={channels} selected={selected} onChange={choose} />
           <button
             className="btn-primary"
