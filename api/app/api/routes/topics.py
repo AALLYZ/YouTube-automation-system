@@ -10,7 +10,14 @@ from app.core.errors import AppError, NotFoundError
 from app.models.channel import Channel
 from app.models.content import Topic
 from app.models.user import User
-from app.schemas.topic import GenerateTopicsRequest, TopicOut, TopicReject, TrendingTopicsRequest
+from app.schemas.topic import (
+    GenerateTopicsRequest,
+    LinkTopicsRequest,
+    TopicOut,
+    TopicReject,
+    TrendingTopicsRequest,
+)
+from app.services.link_topics import extract_page, generate_topics_from_page
 from app.services.topics import generate_topics
 from app.services.trending import fetch_trending_videos, generate_topics_from_trending
 
@@ -68,6 +75,32 @@ def generate_from_trending(
         if not videos:
             raise AppError("No trending videos returned for that region/category")
         topics = generate_topics_from_trending(db, ch, videos=videos, count=payload.count)
+    except AppError:
+        db.rollback()
+        raise
+    db.commit()
+    for t in topics:
+        db.refresh(t)
+    return topics
+
+
+@router.post("/channels/{channel_id}/topics:from_link", response_model=list[TopicOut])
+def generate_from_link(
+    channel_id: int,
+    payload: LinkTopicsRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Extract any pasted URL's content and rewrite it into original topics.
+
+    The page's own text is used only to tell the AI what it's about — the
+    generated topics (and every script produced from them later) are
+    original, AI-written content; nothing is copied from the source page.
+    """
+    ch = _channel(db, channel_id)
+    try:
+        page = extract_page(payload.url)
+        topics = generate_topics_from_page(db, ch, page=page, count=payload.count)
     except AppError:
         db.rollback()
         raise

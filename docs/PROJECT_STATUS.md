@@ -351,6 +351,27 @@ keep the app in "Testing" with the channel owner as a test user, then set
   badge (hover shows which trending videos inspired it).
 - **99 pytest tests green** (was 97).
 
+## Post-launch feature — Any URL → original topics
+
+- **`app/utils/webpage.py`**: fetches a pasted URL (stdlib `html.parser`, no new
+  dependency) and extracts `<title>` + visible text, stripping
+  script/style/nav/footer/aside. Basic SSRF guard — only http(s), and every
+  resolved address (initial host, and the final one after redirects) must be
+  public: no private/loopback/link-local/reserved/multicast ranges.
+- **`services/link_topics.py`**: same pattern as trending — feeds the page's
+  title/text to the AI as *inspiration only*, with an explicit no-quote,
+  no-close-paraphrase instruction, and reuses `generate_topics`'s scoring/dedup.
+  `topics.source = "web_link"`, `source_ref = {url, title, domain}` (never the
+  scraped article text itself).
+- **API**: `POST /api/channels/{id}/topics:from_link` (`url`, `count`).
+- **Dashboard**: Topics page now has a tab strip — "✨ Generate" (existing
+  Generate 8 / From YouTube Trending) and "🔗 From Any Link" (paste any
+  article/blog/video page URL → "Extract & Generate"). Link-derived rows carry
+  a blue "`<domain>`-inspired" badge. Live-verified against a real Wikipedia
+  page.
+- **110 pytest tests green** (was 99), including SSRF-guard and extraction
+  unit tests.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.

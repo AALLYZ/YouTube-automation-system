@@ -18,6 +18,11 @@ class TrendingTopicsRequest(BaseModel):
     count: int = Field(6, ge=1, le=20)
 
 
+class LinkTopicsRequest(BaseModel):
+    url: str = Field(..., min_length=5, max_length=2000)
+    count: int = Field(6, ge=1, le=20)
+
+
 class TopicOut(BaseModel):
     id: int
     channel_id: int

@@ -82,3 +82,56 @@ def test_trending_topics_empty_returns_error(client, auth, channel_id, monkeypat
         headers=auth,
     )
     assert r.status_code == 400
+
+
+def test_link_topics_are_original_and_tagged(client, auth, channel_id, monkeypatch):
+    import app.api.routes.topics as topics_routes
+
+    fake_page = {
+        "title": "10 Weird Facts About Black Holes You Never Knew",
+        "text": "Black holes are regions of spacetime where gravity is so strong that nothing, "
+        "not even light, can escape. This article covers formation, event horizons, and "
+        "Hawking radiation in detail with several long quotes from physicists.",
+        "domain": "example.com",
+        "url": "https://example.com/black-holes-article",
+    }
+    monkeypatch.setattr(topics_routes, "extract_page", lambda url: fake_page)
+
+    r = client.post(
+        f"/api/channels/{channel_id}/topics:from_link",
+        json={"url": "https://example.com/black-holes-article", "count": 4},
+        headers=auth,
+    )
+    assert r.status_code == 200, r.text
+    topics = r.json()
+    assert len(topics) >= 1
+    for t in topics:
+        assert t["source"] == "web_link"
+        assert t["source_ref"] == {
+            "url": fake_page["url"],
+            "title": fake_page["title"],
+            "domain": fake_page["domain"],
+        }
+        # the rewritten topic must not just be the source page's own title verbatim
+        assert t["title"] != fake_page["title"]
+
+    assert client.post(f"/api/topics/{topics[0]['id']}:approve", headers=auth).json()["status"] == "APPROVED"
+
+
+def test_link_topics_rejects_bad_url(client, auth, channel_id):
+    r = client.post(
+        f"/api/channels/{channel_id}/topics:from_link",
+        json={"url": "ftp://example.com/file"},
+        headers=auth,
+    )
+    assert r.status_code == 400
+
+
+def test_link_topics_blocks_private_addresses(client, auth, channel_id):
+    r = client.post(
+        f"/api/channels/{channel_id}/topics:from_link",
+        json={"url": "http://127.0.0.1:8090/secret"},
+        headers=auth,
+    )
+    assert r.status_code == 400
+    assert "public address" in r.json()["message"]
