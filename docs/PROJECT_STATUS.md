@@ -328,6 +328,29 @@ keep the app in "Testing" with the channel owner as a test user, then set
 - **82 pytest tests green** (was 74), 82 % coverage. Live-verified: rate limit
   (10→429), `/api/admin/retention` preview + run, `/api/admin/config`.
 
+## Post-launch feature — YouTube Trending → original topics
+
+- **`YouTubeProvider.list_trending()`** (base/stub/google): pulls the current
+  most-popular chart (`videos.list(chart=mostPopular)` for the real provider,
+  a canned offline list for `stub`). Uses the channel's existing OAuth
+  credential (`youtube.readonly` scope, already requested) — no extra API key.
+- **`services/trending.py`**: feeds the trending titles/channels/view-counts to
+  the AI provider as *inspiration only*, with an explicit instruction not to
+  copy titles, wording, structure, or descriptions. Output is the same
+  `generate_topics` JSON shape, scored and de-duplicated the same way.
+- **`topics.source` / `topics.source_ref`** (migration `9a1c4f2e7b3d`): tags
+  AI-generated topics `"ai"` (default) vs `"youtube_trending"`, and records the
+  inspiring videos (id/title/channel/url only — never their script text) for
+  transparency. From there the topic flows through the normal
+  RESEARCH → SCRIPT → ... stages untouched, so the produced script is
+  originally written, not derived from any source video's actual content.
+- **API**: `POST /api/channels/{id}/topics:from_trending` (`region_code`,
+  `category_id`, `max_results`, `count`).
+- **Dashboard**: Topics page — "🔥 From YouTube Trending" button next to
+  "Generate 8"; trending-derived rows carry an orange "trending-inspired"
+  badge (hover shows which trending videos inspired it).
+- **99 pytest tests green** (was 97).
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.

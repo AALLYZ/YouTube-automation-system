@@ -60,6 +60,7 @@ YT_QUOTA_UNITS: dict[str, int] = {
     "playlistItems.insert": 50,
     "videos.update": 50,
     "channels.list": 1,
+    "videos.list": 1,
 }
 
 

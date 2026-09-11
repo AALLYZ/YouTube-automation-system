@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.errors import AppError, ErrorCode
 from app.core.logging import get_logger
 from app.core.pricing import YT_QUOTA_UNITS
-from app.providers.base import UploadResult, YouTubeProvider
+from app.providers.base import TrendingVideo, UploadResult, YouTubeProvider
 
 log = get_logger("youtube.google")
 
@@ -144,3 +144,47 @@ class GoogleYouTube(YouTubeProvider):
         except Exception as exc:  # noqa: BLE001
             raise self._wrap(exc) from exc
         return YT_QUOTA_UNITS["playlistItems.insert"]
+
+    def list_trending(
+        self,
+        *,
+        region_code: str = "US",
+        category_id: Optional[str] = None,
+        max_results: int = 15,
+        credential: Optional[dict[str, Any]] = None,
+    ) -> tuple[list[TrendingVideo], int]:
+        youtube = self._client(credential)
+        kwargs: dict[str, Any] = {
+            "part": "snippet,statistics",
+            "chart": "mostPopular",
+            "regionCode": region_code,
+            "maxResults": max(1, min(max_results, 50)),
+        }
+        if category_id:
+            kwargs["videoCategoryId"] = str(category_id)
+        try:
+            response = youtube.videos().list(**kwargs).execute()
+        except Exception as exc:  # noqa: BLE001
+            raise self._wrap(exc) from exc
+
+        videos: list[TrendingVideo] = []
+        for item in response.get("items", []):
+            snippet = item.get("snippet", {})
+            stats = item.get("statistics", {})
+            thumbs = snippet.get("thumbnails", {})
+            best_thumb = thumbs.get("high") or thumbs.get("medium") or thumbs.get("default") or {}
+            videos.append(
+                TrendingVideo(
+                    video_id=item["id"],
+                    title=snippet.get("title", ""),
+                    description=snippet.get("description", ""),
+                    channel_title=snippet.get("channelTitle", ""),
+                    tags=list(snippet.get("tags", []) or [])[:20],
+                    category_id=str(snippet.get("categoryId", "")),
+                    view_count=int(stats.get("viewCount", 0) or 0),
+                    published_at=snippet.get("publishedAt", ""),
+                    url=f"https://youtu.be/{item['id']}",
+                    thumbnail_url=best_thumb.get("url", ""),
+                )
+            )
+        return videos, YT_QUOTA_UNITS["videos.list"]

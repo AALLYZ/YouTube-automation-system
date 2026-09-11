@@ -37,8 +37,28 @@ export default function Topics() {
           >
             Generate 8
           </button>
+          <button
+            className="btn-ghost"
+            disabled={!selected || busy}
+            title="Pull what's currently trending on YouTube and rewrite it into original, channel-specific topic ideas — no copied titles, descriptions, or wording."
+            onClick={() =>
+              run(() =>
+                api.post(`/channels/${selected}/topics:from_trending`, {
+                  region_code: "US",
+                  max_results: 10,
+                  count: 6,
+                })
+              )
+            }
+          >
+            🔥 From YouTube Trending
+          </button>
         </div>
       </div>
+      <p className="text-xs text-slate-400">
+        "From YouTube Trending" only uses trending videos as a subject signal — every generated
+        topic is written fresh by AI, so nothing is copied from the original video.
+      </p>
       {err && <ErrorBox msg={err} />}
 
       <div className="card">
@@ -63,6 +83,16 @@ export default function Topics() {
                     <td className="td font-semibold">{t.total_score.toFixed(0)}</td>
                     <td className="td">
                       <div>{t.title}</div>
+                      {t.source === "youtube_trending" && (
+                        <span
+                          className="badge mt-1 w-fit whitespace-nowrap bg-orange-50 text-orange-700 ring-orange-200"
+                          title={`Inspired by trending: ${(t.source_ref?.trending_videos || [])
+                            .map((v: any) => v.title)
+                            .join(", ")}`}
+                        >
+                          🔥 trending-inspired
+                        </span>
+                      )}
                       <div className="text-xs text-slate-400">{t.angle}</div>
                     </td>
                     <td className="td">

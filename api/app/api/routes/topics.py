@@ -10,8 +10,9 @@ from app.core.errors import AppError, NotFoundError
 from app.models.channel import Channel
 from app.models.content import Topic
 from app.models.user import User
-from app.schemas.topic import GenerateTopicsRequest, TopicOut, TopicReject
+from app.schemas.topic import GenerateTopicsRequest, TopicOut, TopicReject, TrendingTopicsRequest
 from app.services.topics import generate_topics
+from app.services.trending import fetch_trending_videos, generate_topics_from_trending
 
 router = APIRouter(tags=["topics"])
 
@@ -33,6 +34,40 @@ def generate(
     ch = _channel(db, channel_id)
     try:
         topics = generate_topics(db, ch, count=payload.count)
+    except AppError:
+        db.rollback()
+        raise
+    db.commit()
+    for t in topics:
+        db.refresh(t)
+    return topics
+
+
+@router.post("/channels/{channel_id}/topics:from_trending", response_model=list[TopicOut])
+def generate_from_trending(
+    channel_id: int,
+    payload: TrendingTopicsRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Pull current YouTube trending videos and rewrite them into original topics.
+
+    The trending videos are used only as inspiration for subject matter — the
+    generated topics (and every script produced from them later) are original,
+    AI-written content with no copied titles, wording, or descriptions.
+    """
+    ch = _channel(db, channel_id)
+    try:
+        videos = fetch_trending_videos(
+            db,
+            ch,
+            region_code=payload.region_code,
+            category_id=payload.category_id,
+            max_results=payload.max_results,
+        )
+        if not videos:
+            raise AppError("No trending videos returned for that region/category")
+        topics = generate_topics_from_trending(db, ch, videos=videos, count=payload.count)
     except AppError:
         db.rollback()
         raise

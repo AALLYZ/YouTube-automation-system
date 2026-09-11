@@ -47,3 +47,38 @@ def test_approve_and_reject(client, auth, channel_id):
         f"/api/channels/{channel_id}/topics?status=APPROVED", headers=auth
     ).json()
     assert [t["id"] for t in approved] == [a]
+
+
+def test_trending_topics_are_original_and_tagged(client, auth, channel_id):
+    r = client.post(
+        f"/api/channels/{channel_id}/topics:from_trending",
+        json={"region_code": "US", "max_results": 5, "count": 4},
+        headers=auth,
+    )
+    assert r.status_code == 200, r.text
+    topics = r.json()
+    assert len(topics) >= 1
+
+    from app.providers.youtube.stub import _TRENDING_SEED
+
+    trending_titles = {t for t, *_ in _TRENDING_SEED}
+    for t in topics:
+        assert t["source"] == "youtube_trending"
+        assert t["source_ref"] and t["source_ref"]["trending_videos"]
+        # the rewritten topic must not just be one of the trending titles verbatim
+        assert t["title"] not in trending_titles
+
+    # they show up alongside regular AI topics and can be approved like any other
+    assert client.post(f"/api/topics/{topics[0]['id']}:approve", headers=auth).json()["status"] == "APPROVED"
+
+
+def test_trending_topics_empty_returns_error(client, auth, channel_id, monkeypatch):
+    from app.providers.youtube import stub as stub_mod
+
+    monkeypatch.setattr(stub_mod, "_TRENDING_SEED", [])
+    r = client.post(
+        f"/api/channels/{channel_id}/topics:from_trending",
+        json={"region_code": "US"},
+        headers=auth,
+    )
+    assert r.status_code == 400

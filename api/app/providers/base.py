@@ -76,6 +76,20 @@ class UploadResult:
 
 
 @dataclasses.dataclass
+class TrendingVideo:
+    video_id: str
+    title: str
+    description: str
+    channel_title: str
+    tags: list[str]
+    category_id: str
+    view_count: int
+    published_at: str
+    url: str
+    thumbnail_url: str = ""
+
+
+@dataclasses.dataclass
 class NotifyResult:
     message_id: str
     status: str
@@ -204,6 +218,17 @@ class YouTubeProvider(abc.ABC):
     ) -> int:
         """Add an uploaded video to a playlist. Returns quota units consumed."""
         return 0
+
+    def list_trending(
+        self,
+        *,
+        region_code: str = "US",
+        category_id: Optional[str] = None,
+        max_results: int = 15,
+        credential: Optional[dict[str, Any]] = None,
+    ) -> tuple[list["TrendingVideo"], int]:
+        """Return the current trending (most-popular) videos plus quota units consumed."""
+        raise NotImplementedError
 
 
 class NotifierProvider(abc.ABC):

@@ -42,6 +42,12 @@ class Topic(Base, TimestampMixin):
     status: Mapped[TopicStatus] = mapped_column(enum_col(TopicStatus), default=TopicStatus.GENERATED)
     rejected_reason: Mapped[Optional[str]] = mapped_column(Text)
 
+    # Where the idea came from, e.g. "ai" (default) or "youtube_trending".
+    source: Mapped[str] = mapped_column(String(30), default="ai")
+    # Attribution only (video id/title/channel/url) — never the source video's
+    # own script or description text, which the script stage must not reuse.
+    source_ref: Mapped[Optional[dict]] = mapped_column(JSONB)
+
 
 class Research(Base, TimestampMixin):
     __tablename__ = "research"
