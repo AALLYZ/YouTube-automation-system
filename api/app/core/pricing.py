@@ -45,6 +45,14 @@ IMAGE_PER_IMAGE: dict[str, float] = {
     "stub": 0.0,
 }
 
+# --- Text-to-video: USD per GPU-second of generation (Replicate bills by
+# compute time; this is a rough estimate for dashboard reporting, not billing —
+# check https://replicate.com/pricing for the actual hardware tier used) ---
+VIDEO_CLIP_PER_SEC: dict[str, float] = {
+    "replicate": 0.0011,
+    "stub": 0.0,
+}
+
 # --- Research: USD per search ---
 RESEARCH_PER_SEARCH: dict[str, float] = {
     "tavily": 0.008,
@@ -83,3 +91,7 @@ def image_cost(provider: str, count: int) -> float:
 
 def research_cost(provider: str, searches: int) -> float:
     return round(searches * RESEARCH_PER_SEARCH.get(provider, 0.0), 6)
+
+
+def video_clip_cost(provider: str, seconds: float) -> float:
+    return round(max(seconds, 0.0) * VIDEO_CLIP_PER_SEC.get(provider, 0.0), 6)

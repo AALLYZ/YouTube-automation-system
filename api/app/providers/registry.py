@@ -113,9 +113,16 @@ def get_stock() -> StockMediaProvider:
 
 @lru_cache
 def get_video_clip() -> VideoClipProvider:
-    from app.providers.video_clip.stub import StubVideoClip
+    p = settings.video_clip_provider
+    if p == "replicate":
+        from app.providers.video_clip.replicate import ReplicateVideoClip
 
-    return StubVideoClip()
+        return ReplicateVideoClip()
+    if p == "stub":
+        from app.providers.video_clip.stub import StubVideoClip
+
+        return StubVideoClip()
+    raise AppError(f"Unknown VIDEO_CLIP_PROVIDER: {p}", code=ErrorCode.CONFIG)
 
 
 @lru_cache

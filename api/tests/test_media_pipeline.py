@@ -95,6 +95,54 @@ def test_hd_default_and_4k_render_quality(client, auth, drafted):
     assert vstream["height"] == 2160
 
 
+def test_ai_video_scene_produces_real_video_asset(client, auth, drafted, db, monkeypatch):
+    """A real text-to-video provider (not the offline stub) must be stored as a
+    genuine video asset, not mislabeled as a still image (regression test for
+    the hardcoded-.png bug in services/visuals.py)."""
+    from sqlalchemy import select
+
+    import app.services.visuals as visuals_mod
+    from app.core.enums import VisualType
+    from app.models.content import Script, VideoScene
+    from app.models.media import VisualAsset
+    from app.providers.base import ImageResult, Usage, VideoClipProvider
+
+    _cid, job = drafted
+    script = db.execute(select(Script).order_by(Script.id.desc())).scalars().first()
+    scene = db.execute(
+        select(VideoScene).where(VideoScene.script_id == script.id).order_by(VideoScene.scene_index)
+    ).scalars().first()
+    scene.visual_type = VisualType.AI_VIDEO
+    db.commit()
+
+    class FakeRealVideoProvider(VideoClipProvider):
+        name = "fake_real_video"
+        output_ext = "mp4"
+
+        def generate(self, *, prompt: str, out_path: str, duration_sec: float = 4.0) -> ImageResult:
+            with open(out_path, "wb") as fh:
+                fh.write(b"FAKE_MP4_BYTES")
+            return ImageResult(
+                path=out_path, width=0, height=0,
+                license="replicate-generated", attribution="",
+                usage=Usage(provider="fake_real_video", operation="video_clip",
+                            seconds=duration_sec, est_cost_usd=0.02),
+            )
+
+    monkeypatch.setattr(visuals_mod, "get_video_clip", lambda: FakeRealVideoProvider())
+
+    r = client.post(f"/api/jobs/{job}/stages/visuals:run", headers=auth)
+    assert r.status_code == 200, r.text
+
+    asset = db.execute(select(VisualAsset).where(VisualAsset.scene_id == scene.id)).scalar_one()
+    assert asset.asset_type == "video"
+    assert asset.source.value == "ai_video"
+    assert asset.file_key.endswith(".mp4")
+    assert asset.duration_sec == scene.planned_duration_sec
+    assert asset.rights_verified is True
+    assert asset.provider == "fake_real_video"
+
+
 def test_single_stage_runner(client, auth, drafted):
     _cid, job = drafted
     out = client.post(f"/api/jobs/{job}/stages/voice:run", headers=auth)

@@ -153,6 +153,10 @@ class ImageProvider(abc.ABC):
 
 class VideoClipProvider(abc.ABC):
     name: str = "base"
+    # File extension the provider actually writes to `out_path` (without the dot).
+    # A real text-to-video provider writes real video bytes ("mp4"); the offline
+    # stub writes a still image that render.py animates with a Ken Burns pan.
+    output_ext: str = "mp4"
 
     @abc.abstractmethod
     def generate(self, *, prompt: str, out_path: str, duration_sec: float = 4.0) -> ImageResult: ...

@@ -156,6 +156,33 @@ def test_registry_rejects_unknown_provider(monkeypatch):
     registry.get_youtube.cache_clear()
 
 
+def test_video_clip_registry_selection(monkeypatch):
+    from app.core.errors import AppError
+    from app.providers import registry
+
+    # unconfigured API key -> CONFIG error, not a silent fallback to stub
+    monkeypatch.setattr(registry.settings, "video_clip_provider", "replicate")
+    monkeypatch.setattr(registry.settings, "replicate_api_token", None)
+    registry.get_video_clip.cache_clear()
+    with pytest.raises(AppError):
+        registry.get_video_clip()
+    registry.get_video_clip.cache_clear()
+
+    # configured -> real provider is returned
+    monkeypatch.setattr(registry.settings, "replicate_api_token", "tok_test")
+    registry.get_video_clip.cache_clear()
+    provider = registry.get_video_clip()
+    assert provider.name == "replicate"
+    assert provider.output_ext == "mp4"
+    registry.get_video_clip.cache_clear()
+
+    # unknown provider name -> CONFIG error
+    monkeypatch.setattr(registry.settings, "video_clip_provider", "bogus")
+    with pytest.raises(AppError):
+        registry.get_video_clip()
+    registry.get_video_clip.cache_clear()
+
+
 # ---------------- ffmpeg path escaping ----------------
 def test_escape_filter_path():
     from app.utils.ffmpeg import escape_filter_path

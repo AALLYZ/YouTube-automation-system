@@ -17,7 +17,8 @@ from app.services.ai_helpers import record_usage
 
 log = get_logger("visuals")
 
-_VERIFIED_LICENSES = {"generated-stub", "generated-stub-clip", "openai-generated"}
+_VERIFIED_LICENSES = {"generated-stub", "generated-stub-clip", "openai-generated", "replicate-generated"}
+_VIDEO_EXTS = {"mp4", "mov", "webm", "mkv"}
 
 
 def _dims(aspect: str) -> tuple[int, int]:
@@ -85,9 +86,13 @@ def _one_scene(db, tmp, storage, job_id, sc, vtype, prompt, style, width, height
     elif vtype == "ai_video":
         provider = get_video_clip()
         provider_name = provider.name
-        res = provider.generate(prompt=prompt, out_path=local + ".png", duration_sec=sc.planned_duration_sec)
+        ext = provider.output_ext
+        is_video = ext in _VIDEO_EXTS
+        out_path = local + f".{ext}"
+        res = provider.generate(prompt=prompt, out_path=out_path, duration_sec=sc.planned_duration_sec)
         record_usage(db, res.usage, job_id=job_id, stage="VISUALS")
-        local_path, ext, license_, source = local + ".png", "png", res.license, AssetSource.AI_VIDEO
+        local_path, license_, source = out_path, res.license, AssetSource.AI_VIDEO
+        asset_type = "video" if is_video else "image"
     else:  # image / upload-not-supported-yet
         provider = get_image()
         provider_name = provider.name

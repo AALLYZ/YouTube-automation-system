@@ -8,6 +8,7 @@ from app.providers.image.stub import StubImage
 
 class StubVideoClip(VideoClipProvider):
     name = "stub"
+    output_ext = "png"
 
     def generate(self, *, prompt: str, out_path: str, duration_sec: float = 4.0) -> ImageResult:
         # produce a still; render.py applies a Ken Burns zoom for clip scenes

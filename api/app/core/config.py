@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     # ---- Visuals ----
     stability_api_key: Optional[str] = None
     replicate_api_token: Optional[str] = None
+    # owner/name of the Replicate text-to-video model to call — swap to any other
+    # Replicate text-to-video model by changing this, no code changes needed
+    replicate_video_model: str = "anotherjesse/zeroscope-v2-xl"
     pexels_api_key: Optional[str] = None
     pixabay_api_key: Optional[str] = None
 

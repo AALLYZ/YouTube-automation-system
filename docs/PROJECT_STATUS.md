@@ -396,6 +396,42 @@ keep the app in "Testing" with the channel owner as a test user, then set
 - **111 pytest tests green** (was 110), including a real-ffmpeg test that
   renders and probes both the HD default and an explicit 4K request.
 
+### Post-launch feature — real text-to-video AI provider (Replicate)
+
+- `VideoClipProvider` (used for scenes the script AI marks `visual_type:
+  "ai_video"`) previously had only an offline stub that faked a "clip" by
+  generating a still image. Wired in a real implementation:
+  `api/app/providers/video_clip/replicate.py` calls Replicate's hosted-model
+  API (`POST /v1/models/{owner}/{name}/predictions`, no version hash to pin —
+  swap models anytime by changing `REPLICATE_VIDEO_MODEL`, default
+  `anotherjesse/zeroscope-v2-xl`), polls until the prediction finishes, and
+  downloads the resulting video.
+- `registry.get_video_clip()` was a hardcoded no-op (always returned the
+  stub, silently ignoring the already-existing `VIDEO_CLIP_PROVIDER` setting)
+  — fixed to branch on it exactly like every other provider getter, raising
+  `AppError(CONFIG)` if `replicate` is selected without `REPLICATE_API_TOKEN`.
+  **Default stays `stub`** — nothing changes for existing/offline channels
+  until `VIDEO_CLIP_PROVIDER=replicate` is set.
+- Fixed a real bug found while wiring this in: `services/visuals.py`'s
+  `ai_video` branch hardcoded `.png`/`"png"` for the saved asset regardless
+  of what the provider actually produced, so a real video result would have
+  been silently mis-stored as a still image (and `duration_sec` would never
+  populate on the row, since `is_video` was never set `True`). Providers now
+  declare `output_ext` (`"mp4"` for Replicate, `"png"` for the stub, which
+  still fakes a clip via a Ken-Burns-panned still); `visuals.py` uses that to
+  pick the real file extension, `asset_type`, and `is_video` flag.
+- Cost tracking: added `VIDEO_CLIP_PER_SEC`/`video_clip_cost()` to
+  `core/pricing.py` (Replicate bills by GPU-second; the provider reads the
+  actual `predict_time` from the completed prediction's metrics for an
+  accurate per-clip estimate, not a flat guess).
+- **117 pytest tests green** (was 111): HTTP calls mocked for the
+  create-prediction → poll → download flow and its error paths (rate limit,
+  failed generation, missing token), a registry-selection test mirroring the
+  existing provider-getter tests, and a regression test proving a real-video
+  result is now stored as `asset_type="video"` with `duration_sec` set
+  (previously untestable since the stub AI never emits `visual_type:
+  "ai_video"`, so this bug had zero test coverage before).
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
