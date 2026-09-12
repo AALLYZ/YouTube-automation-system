@@ -20,6 +20,15 @@ log = get_logger("render")
 _VIDEO_EXT = {".mp4", ".mov", ".webm", ".mkv"}
 _INTRO_OUTRO_DEFAULT_SEC = 0.0
 
+# Quality tier -> libx264 encode settings. Lower CRF = higher quality/bitrate;
+# slower presets trade encode time for better compression at the same CRF.
+_ENCODE = {
+    "sd": {"crf": "23", "preset": "veryfast"},
+    "hd": {"crf": "18", "preset": "medium"},
+    "4k": {"crf": "16", "preset": "slow"},
+}
+_DEFAULT_ENCODE = _ENCODE["hd"]
+
 
 def run_render(
     db: Session, *, job_id: int, burn_subtitles: bool = True, branding_text: str = ""
@@ -34,6 +43,7 @@ def run_render(
 
         width, height = (int(x) for x in timeline["resolution"].split("x"))
         fps = int(timeline["fps"])
+        encode = _ENCODE.get(timeline.get("quality", ""), _DEFAULT_ENCODE)
         scenes = timeline["scenes"]
         if not scenes:
             raise AppError("Timeline has no scenes", code=ErrorCode.RENDER_FAILED)
@@ -112,7 +122,7 @@ def run_render(
             "-filter_complex", ";".join(filters),
             "-map", video_out_label,
             "-map", audio_out_label,
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:v", "libx264", "-preset", encode["preset"], "-crf", encode["crf"],
             "-pix_fmt", "yuv420p", "-r", str(fps),
             "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart",
@@ -126,7 +136,8 @@ def run_render(
             if srt_local:
                 log.warning("render failed with burned subtitles, retrying without: %s", exc.message[:200])
                 return _render_without_subs(db, vp, timeline, tmp, inputs, width, height, fps, n,
-                                            voice_idx, music_idx, music, branding_text, out_path, total, storage, job_id)
+                                            voice_idx, music_idx, music, branding_text, out_path, total,
+                                            storage, job_id, encode)
             raise
 
         info = probe(out_path)
@@ -145,7 +156,7 @@ def run_render(
 
 
 def _render_without_subs(db, vp, timeline, tmp, inputs, width, height, fps, n, voice_idx,
-                         music_idx, music, branding_text, out_path, total, storage, job_id):
+                         music_idx, music, branding_text, out_path, total, storage, job_id, encode):
     filters = []
     for i, sc in enumerate(timeline["scenes"]):
         dur = float(sc["duration"])
@@ -166,7 +177,7 @@ def _render_without_subs(db, vp, timeline, tmp, inputs, width, height, fps, n, v
     args = [
         *inputs, "-filter_complex", ";".join(filters),
         "-map", "[vcat]", "-map", a_label,
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(fps),
+        "-c:v", "libx264", "-preset", encode["preset"], "-crf", encode["crf"], "-pix_fmt", "yuv420p", "-r", str(fps),
         "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-t", f"{total:.3f}", "-shortest", out_path,
     ]
     run(args)

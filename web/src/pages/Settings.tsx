@@ -15,6 +15,7 @@ export default function Settings() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
+  const [quality, setQuality] = useState("hd");
 
   useEffect(() => {
     if (!selected) return;
@@ -23,8 +24,21 @@ export default function Settings() {
       const r: Record<string, string> = {};
       JSON_BLOBS.forEach((k) => (r[k] = JSON.stringify(s[k] ?? {}, null, 2)));
       setRaw(r);
+      setQuality((s.visual_cfg ?? {}).quality || "hd");
     });
   }, [selected]);
+
+  function setVideoQuality(q: string) {
+    setQuality(q);
+    let vc: any = {};
+    try {
+      vc = JSON.parse(raw.visual_cfg || "{}");
+    } catch {
+      vc = {};
+    }
+    vc.quality = q;
+    setRaw((r) => ({ ...r, visual_cfg: JSON.stringify(vc, null, 2) }));
+  }
 
   async function save() {
     setErr(null);
@@ -127,6 +141,18 @@ export default function Settings() {
                 value={settings.publish_time}
                 onChange={(e) => setSettings({ ...settings, publish_time: e.target.value })}
               />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1 block font-medium text-slate-600">Video render quality</span>
+              <select
+                className="input"
+                value={quality}
+                onChange={(e) => setVideoQuality(e.target.value)}
+              >
+                <option value="sd">SD (720p, fastest render)</option>
+                <option value="hd">HD (1080p, recommended)</option>
+                <option value="4k">4K Ultra HD (2160p, slowest render)</option>
+              </select>
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input

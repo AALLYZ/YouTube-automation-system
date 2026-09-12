@@ -71,6 +71,7 @@ def _cfg(channel: Channel) -> dict:
     visual = (s.visual_cfg if s else {}) or {}
     return {
         "aspect": visual.get("aspect_ratio", "16:9"),
+        "quality": visual.get("quality", "hd"),
         "voice_cfg": (s.voice_cfg if s else {}) or {},
         "visual_cfg": visual,
         "research_cfg": (s.research_cfg if s else {}) or {},
@@ -163,6 +164,7 @@ def _stage_timeline(db: Session, job: Job, channel: Channel) -> dict:
         job_id=job.id,
         script_id=_script_for_job(db, job).id,
         aspect=c["aspect"],
+        quality=c["quality"],
         allow_unverified_media=c["allow_unverified"],
         music_cfg=c["visual_cfg"],
     )

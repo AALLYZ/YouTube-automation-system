@@ -55,6 +55,46 @@ def test_full_media_pipeline_produces_playable_mp4(client, auth, drafted):
     assert "video" in types and "audio" in types
 
 
+def test_hd_default_and_4k_render_quality(client, auth, drafted):
+    cid, job = drafted
+
+    # default quality is HD (1080p on 16:9)
+    r = client.post(f"/api/jobs/{job}/media:run", headers=auth)
+    assert r.status_code == 200, r.text
+    tl = client.get(f"/api/jobs/{job}/timeline", headers=auth).json()
+    assert tl["resolution"] == "1920x1080"
+
+    # switching a channel to 4K quality produces a 3840x2160 render
+    client.put(
+        f"/api/channels/{cid}/settings",
+        json={"visual_cfg": {"quality": "4k"}},
+        headers=auth,
+    )
+    topics = client.post(
+        f"/api/channels/{cid}/topics:generate", json={"count": 5}, headers=auth
+    ).json()
+    draft = client.post(
+        f"/api/channels/{cid}/scripts:draft",
+        json={"topic_id": topics[0]["id"], "test_run": True},
+        headers=auth,
+    ).json()
+    job4k = draft["job_public_id"]
+    r4k = client.post(f"/api/jobs/{job4k}/media:run", headers=auth)
+    assert r4k.status_code == 200, r4k.text
+    tl4k = client.get(f"/api/jobs/{job4k}/timeline", headers=auth).json()
+    assert tl4k["resolution"] == "3840x2160"
+    assert tl4k["quality"] == "4k"
+
+    v = client.get(f"/api/jobs/{job4k}/video", headers=auth)
+    assert v.status_code == 200
+    path = f"/tmp/ytauto-test-4k-{job4k}.mp4"
+    open(path, "wb").write(v.content)
+    info = probe(path)
+    vstream = next(s for s in info["streams"] if s["type"] == "video")
+    assert vstream["width"] == 3840
+    assert vstream["height"] == 2160
+
+
 def test_single_stage_runner(client, auth, drafted):
     _cid, job = drafted
     out = client.post(f"/api/jobs/{job}/stages/voice:run", headers=auth)

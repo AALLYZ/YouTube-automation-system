@@ -6,9 +6,23 @@ const HAS_VIDEO = [
   "RENDER", "THUMBNAIL", "METADATA", "FINAL_QA", "APPROVAL_GATE", "UPLOAD", "NOTIFY", "COMPLETE",
 ];
 
+const _QUALITY_LABEL: Record<string, string> = {
+  "3840x2160": "4K",
+  "2160x3840": "4K",
+  "2160x2160": "4K",
+  "1920x1080": "HD",
+  "1080x1920": "HD",
+  "1080x1080": "HD",
+  "1280x720": "SD",
+  "720x1280": "SD",
+  "720x720": "SD",
+};
+
 function VideoCard({ job }: { job: any }) {
   const [url, setUrl] = useState<string | null>(null);
   const [err, setErr] = useState(false);
+  const resolution = job.steps?.find((s: any) => s.stage === "TIMELINE")?.output?.resolution;
+  const qualityLabel = resolution ? _QUALITY_LABEL[resolution] || resolution : null;
 
   useEffect(() => {
     let revoke: string | null = null;
@@ -27,7 +41,17 @@ function VideoCard({ job }: { job: any }) {
     <div className="card space-y-2">
       <div className="flex items-center justify-between">
         <span className="font-mono text-xs">{job.public_id}</span>
-        <Badge value={job.status} />
+        <div className="flex items-center gap-1">
+          {qualityLabel && (
+            <span
+              className="badge bg-violet-50 text-violet-700 ring-violet-200"
+              title={resolution}
+            >
+              {qualityLabel}
+            </span>
+          )}
+          <Badge value={job.status} />
+        </div>
       </div>
       {url ? (
         <video className="aspect-video w-full rounded bg-black" controls src={url} />

@@ -34,7 +34,9 @@ def _script_for_job(db: Session, job: Job) -> Script:
 
 def run_media_stage(db: Session, job: Job, channel: Channel, stage: str) -> dict:
     settings_row = channel.settings
-    aspect = (settings_row.visual_cfg or {}).get("aspect_ratio", "16:9") if settings_row else "16:9"
+    visual_cfg = (settings_row.visual_cfg or {}) if settings_row else {}
+    aspect = visual_cfg.get("aspect_ratio", "16:9")
+    quality = visual_cfg.get("quality", "hd")
     script = _script_for_job(db, job)
 
     step_stage = {
@@ -52,23 +54,22 @@ def run_media_stage(db: Session, job: Job, channel: Channel, stage: str) -> dict
             out = {"duration_sec": vo.duration_sec, "provider": vo.provider}
         elif stage == "visuals":
             assets = run_visuals(db, job_id=job.id, script_id=script.id, aspect=aspect,
-                                 visual_cfg=(settings_row.visual_cfg if settings_row else {}))
+                                 visual_cfg=visual_cfg)
             out = {"assets": len(assets),
                    "unverified": sum(1 for a in assets if not a.rights_verified)}
         elif stage == "subtitles":
             out = run_subtitles(db, job_id=job.id, script_id=script.id)
         elif stage == "timeline":
             vp = run_timeline(
-                db, job_id=job.id, script_id=script.id, aspect=aspect,
+                db, job_id=job.id, script_id=script.id, aspect=aspect, quality=quality,
                 allow_unverified_media=bool(settings_row and settings_row.allow_unverified_media),
-                music_cfg=(settings_row.visual_cfg if settings_row else {}),
+                music_cfg=visual_cfg,
             )
             out = {"duration_sec": vp.duration_sec, "resolution": vp.resolution}
         elif stage == "render":
-            vcfg = (settings_row.visual_cfg or {}) if settings_row else {}
             vp = run_render(db, job_id=job.id,
-                            burn_subtitles=bool(vcfg.get("burn_subtitles", True)),
-                            branding_text=vcfg.get("branding_text", ""))
+                            burn_subtitles=bool(visual_cfg.get("burn_subtitles", True)),
+                            branding_text=visual_cfg.get("branding_text", ""))
             out = {"video_key": vp.video_key, "duration_sec": vp.duration_sec, "size_bytes": vp.size_bytes}
         else:  # pragma: no cover
             raise AppError(f"Unknown media stage {stage}", code="VALIDATION")

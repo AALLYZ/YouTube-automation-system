@@ -18,7 +18,12 @@ from app.providers.registry import get_storage
 log = get_logger("timeline")
 
 FPS = 30
-_RES = {"16:9": "1920x1080", "9:16": "1080x1920", "1:1": "1080x1080"}
+_RES = {
+    "16:9": {"sd": "1280x720", "hd": "1920x1080", "4k": "3840x2160"},
+    "9:16": {"sd": "720x1280", "hd": "1080x1920", "4k": "2160x3840"},
+    "1:1": {"sd": "720x720", "hd": "1080x1080", "4k": "2160x2160"},
+}
+DEFAULT_QUALITY = "hd"
 TIMELINE_VERSION = 1
 
 
@@ -28,10 +33,12 @@ def run_timeline(
     job_id: int,
     script_id: int,
     aspect: str = "16:9",
+    quality: str = DEFAULT_QUALITY,
     allow_unverified_media: bool = False,
     music_cfg: dict | None = None,
 ) -> VideoProject:
     music_cfg = music_cfg or {}
+    quality = quality if quality in ("sd", "hd", "4k") else DEFAULT_QUALITY
     vo = db.execute(select(Voiceover).where(Voiceover.job_id == job_id)).scalar_one()
     scenes = list(
         db.execute(
@@ -78,12 +85,13 @@ def run_timeline(
     elif music_cfg.get("music_key"):
         music = {"key": music_cfg["music_key"], "duck_pct": int(music_cfg.get("duck_pct", 15))}
 
-    resolution = _RES.get(aspect, "1920x1080")
+    resolution = _RES.get(aspect, _RES["16:9"])[quality]
     timeline = {
         "timeline_version": TIMELINE_VERSION,
         "job_id": job_id,
         "aspect_ratio": aspect,
         "resolution": resolution,
+        "quality": quality,
         "fps": FPS,
         "duration": round(cursor, 3),
         "audio": {"voice_key": vo.audio_key, "voice_duration": vo.duration_sec},

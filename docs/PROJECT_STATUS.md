@@ -372,6 +372,30 @@ keep the app in "Testing" with the channel owner as a test user, then set
 - **110 pytest tests green** (was 99), including SSRF-guard and extraction
   unit tests.
 
+### Post-launch feature — HD/4K video render quality
+
+- Added a real quality knob to the render stage (previously hardcoded to a
+  single 1080p/CRF20/veryfast preset). Three tiers: `sd` (720p, CRF 23,
+  veryfast — fastest), `hd` (1080p, CRF 18, medium — default), `4k` (2160p,
+  CRF 16, slow — highest quality/slowest encode). Resolution is derived per
+  aspect ratio (`16:9`/`9:16`/`1:1`) × quality tier in `services/timeline.py`;
+  the ffmpeg encode args in `services/render.py` are chosen from the same
+  tier, including the burned-subtitle fallback path.
+- Configured per channel via the existing `visual_cfg.quality` key (no schema
+  migration needed — `visual_cfg` was already a free-form JSON settings
+  blob); read by both the full pipeline (`workflows/pipeline.py`) and the
+  standalone media sub-pipeline used by `/jobs/{id}/media:run`
+  (`services/media.py`) — both now stay in sync on `aspect`/`quality`.
+- **Dashboard**: Settings page has a new "Video render quality" dropdown
+  (SD/HD/4K) that writes into `visual_cfg.quality`. Videos page shows an
+  HD/4K/SD badge per job, read from the TIMELINE step's stored resolution —
+  no new API endpoint needed.
+- Live-verified: switched a channel to 4K, ran the full media pipeline, and
+  confirmed via `ffprobe` the rendered `final_video.mp4` is actually
+  3840x2160.
+- **111 pytest tests green** (was 110), including a real-ffmpeg test that
+  renders and probes both the HD default and an explicit 4K request.
+
 ## Open decisions needing user input
 
 1. **Dashboard**: bundled React SPA (planned) vs. a separate Next.js app. Default: React SPA served by FastAPI.
